@@ -20,6 +20,8 @@ import Index from "./pages/Index";
 import { AuthProvider } from "./contexts/AuthContext";
 import AuthCallback from "./pages/AuthCallback";
 import UpdateInfoPage from "@/pages/UpdateInfoPage.tsx";
+import MyProfilePage from "@/pages/MyProfilePage.tsx";
+import ProfilePage from "@/pages/ProfilePage.tsx";
 
 const queryClient = new QueryClient();
 
@@ -41,7 +43,6 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
-            <Route path="/updateProfile" element={<UpdateInfoPage />} />
             <Route path="/app" element={
               <ProtectedRoute>
                 <Layout />
@@ -53,6 +54,9 @@ const App = () => (
               <Route path="tasks" element={<Tasks />} />
               <Route path="projects" element={<Projects />} />
               <Route path="events" element={<Events />} />
+              <Route path="profile" element={<MyProfilePage />} />
+              <Route path="profile/:id" element={<ProfilePage />} />
+              <Route path="updateProfile/:userId" element={<UpdateInfoPage />} />
               <Route path="meeting/:roomId" element={<MeetingRoom />} />
             </Route>
             <Route path="*" element={<NotFound />} />

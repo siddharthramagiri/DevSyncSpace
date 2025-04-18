@@ -40,7 +40,12 @@ const userSchema = new mongoose.Schema({
   jobTitle: String,
   location: String,
   phoneNumber: String,
-  
+
+  team: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
+
   // App usage
   lastLogin: Date,
   createdAt: {

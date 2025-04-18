@@ -4,6 +4,23 @@ import { Project, Event, Meeting, User } from '@/types/project';
 // API configuration
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
+
+const addToTeam = async (userId: string) => {
+  const response = await fetch(`/api/users/follow/${userId}`, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+      'Content-Type': 'application/json'
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Failed to add team member');
+  }
+  return await response.json();
+};
+
 // Helper for handling fetch errors
 const handleResponse = async (response: Response) => {
   if (!response.ok) {
@@ -157,6 +174,10 @@ export const api = {
     },
   },
 
+  user : {
+    addToTeam
+  },
+
   // Meeting endpoints
   meetings: {
     // Get all meetings
@@ -213,5 +234,6 @@ export const api = {
     },
   },
 };
+
 
 export default api;
