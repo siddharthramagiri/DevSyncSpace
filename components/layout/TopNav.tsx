@@ -7,8 +7,6 @@ import { useToast } from "@/components/ui/use-toast";
 import { useState, useEffect } from "react";
 import { useRouter } from 'next/navigation';
 
-// import api from "@/services/api.ts";
-
 interface TopNavProps {
   sidebarOpen: boolean;
   setSidebarOpen: (open: boolean) => void;
@@ -36,7 +34,7 @@ const TopNav = ({ sidebarOpen, setSidebarOpen }: TopNavProps) => {
       title: "Meeting created",
       description: "Starting a new meeting room",
     });
-    router.push('/dashboard/#meeting/')
+    router.push('/app/meeting')
     // window.location.href = `/app/meeting/${roomId}`;
   };
 
@@ -45,11 +43,11 @@ const TopNav = ({ sidebarOpen, setSidebarOpen }: TopNavProps) => {
         <div className="flex h-16 items-center justify-between px-4 relative">
           <div className="flex items-center">
             <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                aria-label="Toggle sidebar"
-                className="mr-2"
+              variant="ghost"
+              size="icon"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              aria-label="Toggle sidebar"
+              className="mr-2 md:hidden"
             >
               <Menu className="h-6 w-6" />
             </Button>

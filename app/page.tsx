@@ -8,7 +8,7 @@ import { authConfig } from "@/lib/auth";
 export default async function Home() {
   const session = await getServerSession(authConfig);
   console.log("Session: ", session);
-  if (session) return redirect("/dashboard");
+  if (session) return redirect("/app");
   
   
   return (

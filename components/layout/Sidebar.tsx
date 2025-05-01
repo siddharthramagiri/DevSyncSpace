@@ -1,6 +1,5 @@
-'use client'
-import { NavLink } from "react-router-dom";
-import { cn } from "@/lib/utils";
+import { signOut } from "next-auth/react";
+import { useState, useEffect, useRef } from "react";
 import {
   Home,
   Users,
@@ -8,15 +7,13 @@ import {
   Calendar,
   FileCode,
   CheckSquare,
-  Video,
   LogOut,
-  Menu,
+  Loader2,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {useEffect, useRef, useState} from "react";
-import { usePathname } from "next/navigation"
-import { signOut } from "next-auth/react";
+import { cn } from "@/lib/utils";
+import { usePathname, useRouter } from "next/navigation";
 
 interface SidebarProps {
   open: boolean;
@@ -24,10 +21,10 @@ interface SidebarProps {
 }
 
 const Sidebar = ({ open, setOpen }: SidebarProps) => {
-  const [user, setUser] = useState({})
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
-
+  const router = useRouter();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -39,39 +36,44 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
         setOpen(false);
       }
     };
-
     document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [setOpen]);
 
-  
   const navigation = [
-    { name: "Dashboard", href: "/dashboard", icon: Home },
-    { name: "Teams", href: "/dashboard/#teams", icon: Users },
-    { name: "Chat", href: "/dashboard/#chat", icon: MessageSquare },
-    { name: "Tasks", href: "/dashboard/#tasks", icon: CheckSquare },
-    { name: "Projects", href: "/dashboard/#projects", icon: FileCode },
-    { name: "Events", href: "/dashboard/#events", icon: Calendar },
+    { name: "Dashboard", href: "/app/dashboard", icon: Home },
+    { name: "Teams", href: "/app/teams", icon: Users },
+    { name: "Chat", href: "/app/chat", icon: MessageSquare },
+    { name: "Tasks", href: "/app/tasks", icon: CheckSquare },
+    { name: "Projects", href: "/app/projects", icon: FileCode },
+    { name: "Events", href: "/app/events", icon: Calendar },
   ];
 
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    await signOut({ callbackUrl: "/" });
+  };
 
-  const handleLogout = () => {
-    signOut({ callbackUrl: "/" });  // Redirects to the home page after logout
+  const handleNavigation = (href: string) => {
+    if (window.innerWidth < 768) {
+      setOpen(false);
+      setTimeout(() => {
+        router.push(href);
+      }, 150); // Let sidebar close before routing
+    } else {
+      router.push(href);
+    }
   };
 
   return (
     <>
-      {/* Overlay for mobile */}
       {open && (
         <div
-          className="fixed inset-0 z-10 bg-black bg-opacity-50 md:hidden"
+          className="fixed inset-0 z-10 bg-black/20 backdrop-blur-sm md:hidden"
           onClick={() => setOpen(false)}
         />
       )}
-      
-      {/* Sidebar */}
+
       <div
         ref={sidebarRef}
         className={cn(
@@ -80,12 +82,8 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
         )}
       >
         <div className="flex h-full flex-col">
-          {/* Logo and close button */}
           <div className="flex items-center justify-between border-b px-4 py-5">
-            <div className="flex items-center">
-              <div className="mr-2 h-8 w-8 rounded-full bg-brand-600" />
-              <span className="text-xl font-bold text-gray-900 dark:text-white">DevSyncSpace</span>
-            </div>
+            <span className="text-xl font-bold text-gray-900 dark:text-white">DevSyncSpace</span>
             <Button
               variant="ghost"
               size="icon"
@@ -96,48 +94,39 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
             </Button>
           </div>
 
-          {/* Navigation links */}
           <nav className="flex-1 space-y-1 px-2 py-4">
             {navigation.map((item) => (
-                <div
-                    key={item.name}
-                    onClick={() => {
-                      window.location.href = item.href;
-                    }}
-                    className={cn(
-                        "sidebar-link flex items-center gap-2 px-3 py-2 rounded-md cursor-pointer transition-colors hover:bg-gray-300",
-                        pathname === item.href ? "bg-gray-200 dark:bg-gray-800 font-semibold" : "hover:bg-gray-100 dark:hover:bg-gray-700"
-                    )}
-                >
-                  <item.icon className="h-5 w-5" />
-                  <span>{item.name}</span>
-                </div>
+              <div
+                key={item.name}
+                onClick={() => handleNavigation(item.href)}
+                className={cn(
+                  "sidebar-link flex items-center gap-2 px-3 py-2 rounded-md cursor-pointer transition-colors",
+                  pathname === item.href
+                    ? "bg-gray-200 dark:bg-gray-800 font-semibold"
+                    : "hover:bg-gray-100 dark:hover:bg-gray-700"
+                )}
+              >
+                <item.icon className="h-5 w-5" />
+                <span>{item.name}</span>
+              </div>
             ))}
           </nav>
 
-          {/* Quick actions */}
           <div className="border-t p-4">
             <Button
               variant="outline"
               className="flex w-full items-center justify-center gap-2 text-red-500"
               onClick={handleLogout}
+              disabled={isLoggingOut}
             >
-              <LogOut className="h-4 w-4" />
-              <span>Sign Out</span>
+              {isLoggingOut ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <LogOut className="h-4 w-4" />
+              )}
+              <span>{isLoggingOut ? "Signing Out..." : "Sign Out"}</span>
             </Button>
           </div>
-
-          {/* User profile */}
-          {/* <div onClick={() => window.location.href=('/app/profile')}
-              className="border-t p-4">
-            <div className="flex items-center">
-              <img src={user.img} className="h-8 w-8 rounded-full bg-gray-200" />
-                <div className="ml-3">
-                  <p className="text-sm font-medium">{user.name}</p>
-                  <p className="text-xs text-gray-500">{user.jobTitle}</p>
-                </div>
-            </div> */}
-          {/* </div> */}
         </div>
       </div>
     </>

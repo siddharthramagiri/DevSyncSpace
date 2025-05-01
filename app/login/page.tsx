@@ -7,7 +7,7 @@ import Login from "@/components/Login";
 export default async function SignInPage() {
   const session = await getServerSession(authConfig);
   console.log("Session: ", session);
-  if (session) return redirect("/dashboard");
+  if (session) return redirect("/app");
   
   
   return (

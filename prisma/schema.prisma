@@ -1,0 +1,101 @@
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String   @id @default(cuid())
+  name          String?
+  email         String   @unique
+  image         String?
+  createdAt     DateTime @default(now())
+
+  teams         TeamMember[] // many teams
+  tasks         Task[]       // assigned tasks
+  meetings      Meeting[]    @relation("UserMeetings")
+
+  Meeting Meeting[]
+
+  Team Team[]
+
+  Event Event[]
+}
+
+model Team {
+  id        String        @id @default(cuid())
+  name      String
+  createdAt DateTime       @default(now())
+  leaderId  String
+  leader    User           @relation(fields: [leaderId], references: [id])
+  
+  members   TeamMember[]   // Team members
+  projects  Project[]      // Team projects
+}
+
+model TeamMember {
+  id      String  @id @default(cuid())
+  userId  String
+  teamId  String
+
+  user    User    @relation(fields: [userId], references: [id])
+  team    Team    @relation(fields: [teamId], references: [id])
+
+  @@unique([userId, teamId]) // no duplicate memberships
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  githubUrl   String?
+  teamId      String
+
+  team        Team      @relation(fields: [teamId], references: [id])
+  tasks       Task[]
+}
+
+model Task {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  status      TaskStatus @default(PENDING)
+  dueDate     DateTime?
+  
+  projectId   String
+  assignedToId String?
+
+  project     Project   @relation(fields: [projectId], references: [id])
+  assignedTo  User?     @relation(fields: [assignedToId], references: [id])
+}
+
+model Meeting {
+  id        String   @id @default(cuid())
+  topic     String
+  roomId    String   @unique
+  scheduled DateTime
+  createdBy String
+
+  creator   User     @relation(fields: [createdBy], references: [id])
+  attendees User[]   @relation("UserMeetings")
+}
+
+model Event {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  scheduledAt DateTime
+  createdById String
+
+  creator     User     @relation(fields: [createdById], references: [id])
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+}
