@@ -30,7 +30,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
       <div className="flex-1">
         <TopNav sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
-        <main>{children}</main>
+        <main className="m-5">{children}</main>
       </div>
     </div>
   );

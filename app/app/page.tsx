@@ -32,7 +32,9 @@ export default async function AppPage() {
       },
     });
 
-    if(userExists) console.log("User Already Exists");
+    if(userExists) {
+      console.log("User Already Exists");
+    }
 
     if (!userExists) {
       const newUser = await prisma.user.create({
