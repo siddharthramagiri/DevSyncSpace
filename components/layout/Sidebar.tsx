@@ -13,7 +13,9 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { User } from "@/lib/types";
 import { usePathname, useRouter } from "next/navigation";
+import getUser from "@/app/api/user/getUser";
 
 interface SidebarProps {
   open: boolean;
@@ -25,6 +27,25 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
   const sidebarRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   const router = useRouter();
+  const [user, setUser] = useState<User>({
+    id:'',
+    email:'',
+    createdAt: '',
+  });
+  
+  const fetchUser = async() => {
+    const { user, error } = await getUser();
+    if(!user || error) {
+      console.log("Error! ", error);
+      return;
+    }
+    setUser(user);
+    return {};
+  }
+
+  useEffect(() => {
+    fetchUser();
+  }, [])
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -69,7 +90,7 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
     <>
       {open && (
         <div
-          className="fixed inset-0 z-10 bg-black/20 backdrop-blur-sm md:hidden"
+          className="fixed inset-0 z-10 bg-black/60 md:hidden"
           onClick={() => setOpen(false)}
         />
       )}
@@ -81,7 +102,7 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
           open ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        <div className="flex h-full flex-col">
+        <div className="flex h-full flex-col overflow-hidden">
           <div className="flex items-center justify-between border-b px-4 py-5">
             <span className="text-xl font-bold text-gray-900 dark:text-white">DevSyncSpace</span>
             <Button
@@ -118,7 +139,7 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
               className="flex w-full items-center justify-center gap-2 text-red-500"
               onClick={handleLogout}
               disabled={isLoggingOut}
-            >
+              >
               {isLoggingOut ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
@@ -127,6 +148,25 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
               <span>{isLoggingOut ? "Signing Out..." : "Sign Out"}</span>
             </Button>
           </div>
+          {user && (
+            <div
+              onClick={() => router.push("/app/profile")}
+              className="flex items-center gap-3 p-4 border-t border-b cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+            >
+              <img
+                src={user.image ?? "/default-avatar.png"}
+                className="h-10 w-10 rounded-full object-cover"
+              />
+              <div className="flex-1 overflow-hidden">
+                <p className="truncate font-medium text-gray-900 dark:text-white">
+                  {user.name}
+                </p>
+                <p className="truncate text-sm text-gray-500 dark:text-gray-400">
+                  {user.email}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </>

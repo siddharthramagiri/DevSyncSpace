@@ -26,11 +26,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, []);
   
   return (
-    <div className="flex min-h-screen">
+    <div className="flex h-screen overflow-hidden">
+      {/* Fixed Sidebar */}
       <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
-      <div className="flex-1">
+      {/* Main content wrapper */}
+      <div className="flex flex-col flex-1 overflow-hidden">
+        {/* Top Navigation */}
         <TopNav sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
-        <main className="m-5">{children}</main>
+
+        {/* Main scrollable content */}
+        <main className="flex-1 overflow-y-auto p-5 bg-gray-50 dark:bg-gray-900">
+          {children}
+        </main>
       </div>
     </div>
   );

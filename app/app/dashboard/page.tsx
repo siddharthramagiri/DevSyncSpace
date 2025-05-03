@@ -17,97 +17,90 @@ import { useToast } from "@/components/ui/use-toast";
 import { getUserProjects } from "@/app/api/projects";
 import { useEffect, useState } from "react";
 import getUserId from "@/app/api/user/getUserId";
-import { Project } from "@/lib/types";
+import { Project, Team } from "@/lib/types";
+import NewProjectModal from '@/components/NewProjectModal';
 
+
+
+interface TeamOption {
+  id: string;
+  name: string;
+}
 
 const Dashboard = () => {
     const { toast } = useToast();
     const [projects, setProjects] = useState<Project[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
-    const [teamActivities, setTeamActivities] = useState<any[]>([]); // Replace 'any' with your activity type
-   
+    const [showNewProjectModal, setShowNewProjectModal] = useState(false);
 
-    const upcomingTasks = projects.flatMap(project =>
-        (project.tasks ?? []).map(task => ({
-            ...task,
-            projectTitle: project.title,
-        }))
-        ).filter(task => {
-            const dueDate = new Date(task.dueDate ?? "");
-            const today = new Date();
-            return dueDate >= today;
-    }).filter((task: any) => task.dueDate).sort((a, b) => new Date(a.dueDate || "").getTime() - new Date(b.dueDate || "").getTime()).slice(0, 3);
-      
+
+    const fetchProjects = async () => {
+      try {
+        const { id, error: userError } = await getUserId();
+        if (userError || !id) throw new Error("Failed to fetch user ID");
+  
+        const { projects: fetchedProjects, error: projectsError } = await getUserProjects(id);
+        if (projectsError || !fetchedProjects) throw new Error("Failed to fetch projects");
+  
+        setProjects(fetchedProjects.map(p => ({ 
+            ...p, 
+            description: p.description ?? undefined, 
+            githubUrl: p.githubUrl ?? undefined 
+        })));
+      } catch (err: any) {
+        
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
 
     useEffect(() => {
-        const fetchProjects = async () => {
-          try {
-            const { id, error: userError } = await getUserId();
-            if (userError || !id) throw new Error("Failed to fetch user ID");
-      
-            const { projects: fetchedProjects, error: projectsError } = await getUserProjects(id);
-            if (projectsError || !fetchedProjects) throw new Error("Failed to fetch projects");
-      
-            setProjects(fetchedProjects.map(p => ({ 
-                ...p, 
-                description: p.description ?? undefined, 
-                githubUrl: p.githubUrl ?? undefined 
-            })));
-          } catch (err: any) {
-            
-            setError(err.message);
-          } finally {
-            setLoading(false);
-          }
-        };
-      
         fetchProjects();
     }, []);
 
-    // useEffect(() => {
-    //     const fetchTeamActivity = async () => {
-    //         try {
-    //             const { id, error: userError } = await getUserId();
-    //             if (userError || !id) throw new Error("Failed to fetch user ID");
 
-    //             const { projects: fetchedProjects, error: projectsError } = await getUserProjects(id);
-    //             if (projectsError || !fetchedProjects) throw new Error("Failed to fetch projects");
-
-    //             const activities: any[] = [];
-
-    //             // Loop through projects and extract team activities (you may have a better structure for activities)
-    //             fetchedProjects.forEach(project => {
-    //                 project.tasks?.forEach(task => {
-    //                     if (task.status === "COMPLETED") {
-    //                         activities.push({
-    //                             user: task.assignedTo, // Assuming `assignedTo` holds the user
-    //                             activity: `completed the task "${task.title}"`,
-    //                             timestamp: task.updatedAt, // Adjust based on your task object structure
-    //                         });
-    //                     }
-    //                 });
-
-    //                 project.team?.members?.forEach(member => {
-    //                     // Activity for team members (e.g., meetings, PRs)
-    //                     activities.push({
-    //                         user: member.user,
-    //                         activity: `joined the team`,
-    //                         timestamp: new Date(), // Example timestamp
-    //                     });
-    //                 });
-    //             });
-
-    //             setTeamActivities(activities);
-    //         } catch (err: any) {
-    //             console.error(err);
-    //         } finally {
-    //             setLoading(false);
-    //         }
-    //     };
-
-    //     fetchTeamActivity();
-    // }, []);
+    const onCreateTeam = async ({ name }: { name: string }) => {
+      try {
+        const response = await fetch('/api/teams', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name }),
+        });
+    
+        if (!response.ok) throw new Error('Failed to create team');
+        return await response.json();
+      } catch (error) {
+        console.error('Error creating team:', error);
+        throw error;
+      }
+    };
+    
+    const onCreate = async (projectData: {
+      title: string;
+      description?: string | undefined | null;
+      githubUrl?: string | undefined | null;
+      teamId: string;
+    }) => {
+      // Create the project using the provided data
+      console.log(projectData);
+      // await handleCreateProject(projectData);
+      try {
+        const response = await fetch('/api/projects', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(projectData),
+        });
+    
+        if (!response.ok) throw new Error('Failed to create project');
+        fetchProjects();
+        return await response.json();
+      } catch (error) {
+        console.error('Error creating project:', error);
+        throw error;
+      }
+    };
 
 
   return (
@@ -121,6 +114,7 @@ const Dashboard = () => {
         </div>
         <div className="mt-4 sm:mt-0">
           <Button onClick={() => {
+            setShowNewProjectModal(true);
             toast({title: "New Project", description: "Project creation would be implemented here."})
             }
           }>
@@ -197,7 +191,6 @@ const Dashboard = () => {
             </CardContent>
         </Card>
         </div>
-
 
       {/* Projects Row */}
       <div>
@@ -355,6 +348,12 @@ const Dashboard = () => {
           </CardContent>
         </Card>
       </div>
+      <NewProjectModal
+        open={showNewProjectModal}
+        onClose={() => setShowNewProjectModal(false)}
+        onCreate={onCreate}
+        onCreateTeam={onCreateTeam}  // Pass the team creation handler as a prop
+      />
     </div>
   );
 };

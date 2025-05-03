@@ -93,13 +93,13 @@ const Login = () => {
         <div className="absolute inset-0 flex flex-col items-center justify-center px-10 text-white">
           <h2 className="mb-4 text-3xl font-bold">Streamline your development workflow</h2>
           <p className="max-w-md text-center text-lg">
-            "DevSyncSpace has revolutionized how our distributed team collaborates. Our velocity improved by 35% in the first month."
+            "DevSyncSpace has revolutionized how our distributed team collaborates. Our velocity improved by 35%."
           </p>
           <div className="mt-6 flex items-center">
             <div className="h-12 w-12 rounded-full bg-white"></div>
             <div className="ml-4">
-              <p className="font-medium">Sarah Johnson</p>
-              <p className="text-sm opacity-80">CTO at DevForward</p>
+              <p className="font-medium">Siddu Ramagiri</p>
+              <p className="text-sm opacity-80">Developer of DevSyncSpace</p>
             </div>
           </div>
         </div>

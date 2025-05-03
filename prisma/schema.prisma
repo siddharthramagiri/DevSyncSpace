@@ -28,7 +28,7 @@ model Team {
   createdAt DateTime @default(now())
   leaderId  String
 
-  leader   User         @relation("LedTeams", fields: [leaderId], references: [id])
+  leader   User         @relation("LedTeams", fields: [leaderId], references: [id], onDelete: Cascade)
   members  TeamMember[]
   projects Project[]
 }
@@ -38,8 +38,8 @@ model TeamMember {
   userId String
   teamId String
 
-  user User @relation(fields: [userId], references: [id])
-  team Team @relation(fields: [teamId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
 
   @@unique([userId, teamId]) // prevent duplicate memberships
 }
@@ -51,7 +51,7 @@ model Project {
   githubUrl   String?
   teamId      String
 
-  team  Team   @relation(fields: [teamId], references: [id])
+  team  Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
   tasks Task[]
 }
 
@@ -64,8 +64,8 @@ model Task {
   projectId    String
   assignedToId String?
 
-  project    Project @relation(fields: [projectId], references: [id])
-  assignedTo User?   @relation(fields: [assignedToId], references: [id])
+  project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignedTo User?   @relation(fields: [assignedToId], references: [id], onDelete: SetNull)
 }
 
 model Meeting {
@@ -75,7 +75,7 @@ model Meeting {
   scheduled DateTime
   createdBy String
 
-  creator   User   @relation("CreatedMeetings", fields: [createdBy], references: [id])
+  creator   User   @relation("CreatedMeetings", fields: [createdBy], references: [id], onDelete: Cascade)
   attendees User[] @relation("UserMeetings")
 }
 
@@ -86,7 +86,7 @@ model Event {
   scheduledAt DateTime
   createdById String
 
-  creator User @relation("CreatedEvents", fields: [createdById], references: [id])
+  creator User @relation("CreatedEvents", fields: [createdById], references: [id], onDelete: Cascade)
 }
 
 enum TaskStatus {
