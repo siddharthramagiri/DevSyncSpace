@@ -41,7 +41,7 @@ export default async function AppPage() {
         data: {
           name: session.user?.name,
           email: userEmail,
-          image: session.user?.image,
+          image: `https://ui-avatars.com/api/?name=${session.user?.name}`,
         },
       });
       console.log("Saved User in Database");

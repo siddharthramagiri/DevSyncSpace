@@ -4,15 +4,20 @@ import { useEffect, useState } from "react";
 import getUser from "@/app/api/user/getUser";
 import { FC } from "react";
 import { User, TeamMember, Project } from "@/lib/types";
+import { useToast } from "@/hooks/use-toast";
 
 export default function ProfilePage() {
   const [user, setUser] = useState<User | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchData = async () => {
       const { user, error } = await getUser();
       if (!user || error) {
-        console.error("Error fetching user: ", error);
+        toast({
+          title: "Error",
+          description: `Error fetching User: ${error}`,
+        });
         return;
       }
       setUser(user);

@@ -7,7 +7,7 @@ Promise<{ projects: Project[], error ?: string }>
 {
   
   try {
-    const projects = await prisma.project.findMany({
+    const projects: Project[] = await prisma.project.findMany({
       where: {
         team: {
           members: {

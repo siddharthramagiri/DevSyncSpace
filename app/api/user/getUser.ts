@@ -38,7 +38,7 @@ Promise<{ user?: User, error?: string }>
             id : currUser.id,
             email : currUser.email,
             name : currUser.name || undefined,
-            image : currUser.image || undefined,
+            image : `https://ui-avatars.com/api/?name=${currUser.name}`,
             createdAt : currUser.createdAt.toISOString(),
             teams : currUser.teams.map(teamMember => ({
                 ...teamMember,

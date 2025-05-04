@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
       id: user.id,
       name: user.name || "No name",
       email: user.email,
-      image: user.image || "https://ui-avatars.com/api/?name=User", // fallback avatar
+      image: `https://ui-avatars.com/api/?name=${user.name}`, // fallback avatar
       createdAt: user.createdAt.toISOString(),
     }));
 
