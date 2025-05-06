@@ -99,7 +99,7 @@ const Login = () => {
             <div className="h-12 w-12 rounded-full bg-white"></div>
             <div className="ml-4">
               <p className="font-medium">Siddu Ramagiri</p>
-              <p className="text-sm opacity-80">Developer of DevSyncSpace</p>
+              <p className="text-sm opacity-80">DevSyncSpace Developer</p>
             </div>
           </div>
         </div>

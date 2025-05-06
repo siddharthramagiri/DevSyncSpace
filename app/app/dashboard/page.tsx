@@ -19,6 +19,7 @@ import { useEffect, useState } from "react";
 import getUserId from "@/app/api/user/getUserId";
 import { Project, Team } from "@/lib/types";
 import NewProjectModal from '@/components/NewProjectModal';
+import { title } from "process";
 
 
 
@@ -49,7 +50,6 @@ const Dashboard = () => {
             githubUrl: p.githubUrl ?? undefined 
         })));
       } catch (err: any) {
-        
         setError(err.message);
       } finally {
         setLoading(false);
@@ -72,7 +72,11 @@ const Dashboard = () => {
         if (!response.ok) throw new Error('Failed to create team');
         return await response.json();
       } catch (error) {
-        console.error('Error creating team:', error);
+        toast({
+          title : "Failed to create project",
+          description : "Error, Something went wrong",
+          variant : "destructive"
+        })
         throw error;
       }
     };
@@ -93,12 +97,25 @@ const Dashboard = () => {
           body: JSON.stringify(projectData),
         });
     
-        if (!response.ok) throw new Error('Failed to create project');
+        if (!response.ok) {
+          toast({
+            title : "Failed to create project",
+            description : "Something went wrong",
+            variant : "destructive"
+          })
+        }
+        toast({
+          title : "Created project",
+          description : `${title} is added to your projects`,
+        })
         fetchProjects();
         return await response.json();
       } catch (error) {
-        console.error('Error creating project:', error);
-        throw error;
+        toast({
+          title : "Error creating project",
+          description : "Something went wrong",
+          variant : "destructive"
+        })
       }
     };
 
@@ -115,7 +132,6 @@ const Dashboard = () => {
         <div className="mt-4 sm:mt-0">
           <Button onClick={() => {
             setShowNewProjectModal(true);
-            toast({title: "New Project", description: "Project creation would be implemented here."})
             }
           }>
             <Plus className="mr-2 h-4 w-4" />
