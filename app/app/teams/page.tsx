@@ -6,18 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus, Search, User, Users, Star, UserPlus, MoreHorizontal, Mail, Github } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-
-interface TeamMember {
-  id: string;
-  name: string;
-  role: string;
-  email: string;
-  avatar: string;
-  status: "online" | "offline" | "away";
-}
+import { getMyTeams } from "@/app/api/teams/getMyTeams";
+import { getAllTeams } from "@/app/api/teams/getAllTeams";
 
 interface Team {
   id: string;
@@ -27,47 +20,78 @@ interface Team {
   projects: number;
 }
 
+export interface TeamMemberUser {
+  id: string;
+  name: string | null;
+  email: string;
+  image: string | null;
+}
+
+export interface TeamMember {
+  id: string;
+  userId: string;
+  teamId: string;
+  user: TeamMemberUser;
+}
+
+export interface MyTeam {
+  id: string;
+  name: string;
+  description?: string;
+  createdAt: string;
+  leader?: {
+    id: string;
+    name: string | null;
+    email: string;
+    image: string | null;
+  };
+  members: TeamMember[];
+  projects: any[];
+}
+
 const Teams = () => {
   const { toast } = useToast();
   const [isCreatingTeam, setIsCreatingTeam] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [teams, setTeams] = useState<MyTeam[]>([]);
+  const [allTeams, setAllTeams] = useState<MyTeam[]>([]);
 
   // Sample data
-  const teams: Team[] = [
-    {
-      id: "1",
-      name: "Frontend Team",
-      description: "Responsible for UI/UX implementation and client-side logic",
-      members: [
-        { id: "1", name: "Alex Johnson", role: "Team Lead", email: "alex@example.com", avatar: "", status: "online" },
-        { id: "2", name: "Mira Patel", role: "Senior Developer", email: "mira@example.com", avatar: "", status: "online" },
-        { id: "3", name: "Sam Rodriguez", role: "Developer", email: "sam@example.com", avatar: "", status: "away" },
-        { id: "4", name: "Taylor Kim", role: "Designer", email: "taylor@example.com", avatar: "", status: "offline" },
-      ],
-      projects: 5,
-    },
-    {
-      id: "2",
-      name: "Backend Team",
-      description: "API development and server-side architecture",
-      members: [
-        { id: "5", name: "Jordan Chen", role: "Team Lead", email: "jordan@example.com", avatar: "", status: "online" },
-        { id: "6", name: "Riley Singh", role: "Senior Developer", email: "riley@example.com", avatar: "", status: "away" },
-        { id: "7", name: "Casey Williams", role: "Database Engineer", email: "casey@example.com", avatar: "", status: "offline" },
-      ],
-      projects: 3,
-    },
-    {
-      id: "3",
-      name: "DevOps Team",
-      description: "CI/CD pipelines and infrastructure management",
-      members: [
-        { id: "8", name: "Morgan Lee", role: "DevOps Lead", email: "morgan@example.com", avatar: "", status: "online" },
-        { id: "9", name: "Jamie Garcia", role: "Cloud Engineer", email: "jamie@example.com", avatar: "", status: "offline" },
-      ],
-      projects: 2,
-    },
-  ];
+  // const teams: Team[] = [
+  //   {
+  //     id: "1",
+  //     name: "Frontend Team",
+  //     description: "Responsible for UI/UX implementation and client-side logic",
+  //     members: [
+  //       { id: "1", name: "Alex Johnson", role: "Team Lead", email: "alex@example.com", avatar: "", status: "online" },
+  //       { id: "2", name: "Mira Patel", role: "Senior Developer", email: "mira@example.com", avatar: "", status: "online" },
+  //       { id: "3", name: "Sam Rodriguez", role: "Developer", email: "sam@example.com", avatar: "", status: "away" },
+  //       { id: "4", name: "Taylor Kim", role: "Designer", email: "taylor@example.com", avatar: "", status: "offline" },
+  //     ],
+  //     projects: 5,
+  //   },
+  //   {
+  //     id: "2",
+  //     name: "Backend Team",
+  //     description: "API development and server-side architecture",
+  //     members: [
+  //       { id: "5", name: "Jordan Chen", role: "Team Lead", email: "jordan@example.com", avatar: "", status: "online" },
+  //       { id: "6", name: "Riley Singh", role: "Senior Developer", email: "riley@example.com", avatar: "", status: "away" },
+  //       { id: "7", name: "Casey Williams", role: "Database Engineer", email: "casey@example.com", avatar: "", status: "offline" },
+  //     ],
+  //     projects: 3,
+  //   },
+  //   {
+  //     id: "3",
+  //     name: "DevOps Team",
+  //     description: "CI/CD pipelines and infrastructure management",
+  //     members: [
+  //       { id: "8", name: "Morgan Lee", role: "DevOps Lead", email: "morgan@example.com", avatar: "", status: "online" },
+  //       { id: "9", name: "Jamie Garcia", role: "Cloud Engineer", email: "jamie@example.com", avatar: "", status: "offline" },
+  //     ],
+  //     projects: 2,
+  //   },
+  // ];
 
   const handleCreateTeam = () => {
     setIsCreatingTeam(true);
@@ -81,19 +105,62 @@ const Teams = () => {
     }, 1500);
   };
 
-  const availableMembers: TeamMember[] = [
-    { id: "10", name: "Robin Patel", role: "Senior Developer", email: "robin@example.com", avatar: "", status: "online" },
-    { id: "11", name: "Avery Johnson", role: "Designer", email: "avery@example.com", avatar: "", status: "online" },
-    { id: "12", name: "Quinn Li", role: "Product Manager", email: "quinn@example.com", avatar: "", status: "away" },
-  ];
+  const fetchMyTeams = async () => {
+    try {
+      const {teams, error} = await getAllTeams();
+      if(error) {
+        toast({variant : 'destructive' , description: error});
+        return;
+      }
+      if (!teams) {
+        toast({ variant: "destructive", description: "No teams found." });
+        return;
+      }
+      setAllTeams(teams);
+      toast({description : "Fetched Teams"});
+      
+    } catch (error) {
+      toast({variant : 'destructive' , description: "Error Occured during fetching Teams"});
+    }
+  }
 
-  // Filter available members based on search query
-  const filteredMembers = availableMembers.filter(
-    (member) =>
-      member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      member.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      member.email.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const fetchAllTeams = async () => {
+    try {
+      const {teams, error} = await getMyTeams();
+      if(error) {
+        toast({variant : 'destructive' , description: error});
+        return;
+      }
+      if (!teams) {
+        toast({ variant: "destructive", description: "No teams found." });
+        return;
+      }
+      setTeams(teams);
+      toast({description : "Fetched Teams"});
+      
+    } catch (error) {
+      toast({variant : 'destructive' , description: "Error Occured during fetching Teams"});
+    }
+  }
+  
+  useEffect(() => {
+    fetchMyTeams();
+    fetchAllTeams();
+  },[])
+
+  // const availableMembers: TeamMember[] = [
+  //   { id: "10", name: "Robin Patel", role: "Senior Developer", email: "robin@example.com", avatar: "", status: "online" },
+  //   { id: "11", name: "Avery Johnson", role: "Designer", email: "avery@example.com", avatar: "", status: "online" },
+  //   { id: "12", name: "Quinn Li", role: "Product Manager", email: "quinn@example.com", avatar: "", status: "away" },
+  // ];
+
+  // // Filter available members based on search query
+  // const filteredMembers = availableMembers.filter(
+  //   (member) =>
+  //     member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  //     member.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  //     member.email.toLowerCase().includes(searchQuery.toLowerCase())
+  // );
 
   return (
     <div className="space-y-6">
@@ -138,7 +205,7 @@ const Teams = () => {
                     />
                   </div>
                   <div className="mt-2 max-h-40 overflow-y-auto rounded-md border">
-                    {filteredMembers.length > 0 ? (
+                    {/* {filteredMembers.length > 0 ? (
                       filteredMembers.map((member) => (
                         <div key={member.id} className="flex items-center justify-between p-2 hover:bg-accent">
                           <div className="flex items-center">
@@ -159,7 +226,7 @@ const Teams = () => {
                       <div className="p-2 text-center text-sm text-muted-foreground">
                         No members found
                       </div>
-                    )}
+                    )} */}
                   </div>
                 </div>
               </div>
@@ -185,6 +252,111 @@ const Teams = () => {
         <TabsContent value="teams" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {teams.map((team) => (
+              <Card key={team.id}>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle>{team.name}</CardTitle>
+                    <Button variant="ghost" size="icon">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <CardDescription>{team.description || "No description"}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm text-muted-foreground">
+                        <span className="font-medium text-foreground">{team.members.length}</span> members
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        <span className="font-medium text-foreground">{team.projects.length}</span> projects
+                      </div>
+                    </div>
+                    <div className="flex flex-col space-y-2 justify-between">
+                      {team.members.slice(0, 3).map((member) => (
+                        <div key={member.id} className="flex items-center justify-between">
+                          <div className="flex items-center">
+                            <div className="relative">
+                              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 text-xs font-medium">
+                                {member.user.name
+                                  ?.split(" ")
+                                  .map((n) => n[0])
+                                  .join("")}
+                              </div>
+                            </div>
+                            <div className="ml-2">
+                              <div className="text-sm font-medium">{member.user.name}</div>
+                              <div className="text-xs text-muted-foreground">Developer</div>
+                            </div>
+                          </div>
+                          <div className="flex space-x-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              onClick={() =>
+                                toast({
+                                  title: "Email sent",
+                                  description: `Email sent to ${member.user.email}`,
+                                })
+                              }
+                            >
+                              <Mail className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                      {team.members.length > 3 && (
+                        <Button
+                          variant="ghost"
+                          className="text-sm text-muted-foreground hover:text-foreground"
+                          onClick={() =>
+                            toast({
+                              title: "View Members",
+                              description: `Team "${team.name}" has ${team.members.length} members.`,
+                            })
+                          }
+                        >
+                          View all {team.members.length} members
+                        </Button>
+                      )}
+                    </div>
+                    <div className="flex space-x-2 justify-end">
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                        size="sm"
+                        onClick={() =>
+                          toast({
+                            title: "Team Management",
+                            description: `Managing team "${team.name}".`,
+                          })
+                        }
+                      >
+                        <Users className="mr-2 h-4 w-4" />
+                        Manage
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                        size="sm"
+                        onClick={() =>
+                          toast({
+                            title: "Member Invitation",
+                            description: `Invite members to team "${team.name}".`,
+                          })
+                        }
+                      >
+                        <UserPlus className="mr-2 h-4 w-4" />
+                        Invite
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+
+            {/* {teams.map((team) => (
               <Card key={team.id}>
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
@@ -273,7 +445,7 @@ const Teams = () => {
                   </div>
                 </CardContent>
               </Card>
-            ))}
+            ))} */}
           </div>
         </TabsContent>
         <TabsContent value="all">
@@ -291,17 +463,19 @@ const Teams = () => {
                   <Input placeholder="Search teams..." className="pl-8" />
                 </div>
                 <div className="rounded-md border">
-                  {[...teams, {
-                    id: "4",
-                    name: "Machine Learning Team",
-                    description: "AI/ML model development",
-                    members: [{ id: "14", name: "Pat Chen", role: "Data Scientist", email: "pat@example.com", avatar: "", status: "online" }],
-                    projects: 1,
-                  }].map((team) => (
+                  {[...allTeams, 
+                  // {
+                  //   id: "4",
+                  //   name: "Machine Learning Team",
+                  //   description: "AI/ML model development",
+                  //   members: [{ id: "14", name: "Pat Chen", role: "Data Scientist", email: "pat@example.com", avatar: "", status: "online" }],
+                  //   projects: 1,
+                  // }
+                ].map((team) => (
                     <div key={team.id} className="flex items-center justify-between border-b p-4 last:border-0">
                       <div>
                         <div className="font-medium">{team.name}</div>
-                        <div className="text-sm text-muted-foreground">{team.description}</div>
+                        <div className="text-sm text-muted-foreground">Created by {team.leader?.name ?? "Unknown"}</div>
                       </div>
                       <div className="flex items-center space-x-2">
                         <div className="text-sm text-muted-foreground">{team.members.length} members</div>
