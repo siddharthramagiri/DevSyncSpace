@@ -22,6 +22,7 @@ export interface MyTeam {
   name: string;
   description?: string;
   createdAt: string;
+  leaderId: string,
   leader?: {
     id: string;
     name: string | null;

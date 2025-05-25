@@ -7,18 +7,20 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useEffect, useState } from "react";
-import { Plus, Search, User, Users, Star, UserPlus, MoreHorizontal, Mail, Github } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"; // Adjust path as needed
+import { Plus, Search, Users, Star, UserPlus, MoreHorizontal, Mail, Github } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { getMyTeams } from "@/app/api/teams/getMyTeams";
 import { getAllTeams } from "@/app/api/teams/getAllTeams";
-
-interface Team {
-  id: string;
-  name: string;
-  description: string;
-  members: TeamMember[];
-  projects: number;
-}
+import { useRouter } from "next/navigation";
+import getUserId from "@/app/api/user/getUserId";
+import { deleteTeam } from "@/app/api/teams/DeleteTeam";
+import { InviteUsersModal } from "@/components/InviteUserModal";
 
 export interface TeamMemberUser {
   id: string;
@@ -39,6 +41,7 @@ export interface MyTeam {
   name: string;
   description?: string;
   createdAt: string;
+  leaderId:string;
   leader?: {
     id: string;
     name: string | null;
@@ -55,76 +58,17 @@ const Teams = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [teams, setTeams] = useState<MyTeam[]>([]);
   const [allTeams, setAllTeams] = useState<MyTeam[]>([]);
+  const [userId, setUserId] = useState('');
+  const [selectedTeam, setSelectedTeam] = useState<MyTeam>();
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const router = useRouter();
+  const [isLoadingTeams, setIsLoadingTeams] = useState(true);  // loading teams on fetch
+  const [isDeleting, setIsDeleting] = useState(false);  
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [inviteModalTeam, setInviteModalTeam] = useState<MyTeam | null>(null);
 
-  // Sample data
-  // const teams: Team[] = [
-  //   {
-  //     id: "1",
-  //     name: "Frontend Team",
-  //     description: "Responsible for UI/UX implementation and client-side logic",
-  //     members: [
-  //       { id: "1", name: "Alex Johnson", role: "Team Lead", email: "alex@example.com", avatar: "", status: "online" },
-  //       { id: "2", name: "Mira Patel", role: "Senior Developer", email: "mira@example.com", avatar: "", status: "online" },
-  //       { id: "3", name: "Sam Rodriguez", role: "Developer", email: "sam@example.com", avatar: "", status: "away" },
-  //       { id: "4", name: "Taylor Kim", role: "Designer", email: "taylor@example.com", avatar: "", status: "offline" },
-  //     ],
-  //     projects: 5,
-  //   },
-  //   {
-  //     id: "2",
-  //     name: "Backend Team",
-  //     description: "API development and server-side architecture",
-  //     members: [
-  //       { id: "5", name: "Jordan Chen", role: "Team Lead", email: "jordan@example.com", avatar: "", status: "online" },
-  //       { id: "6", name: "Riley Singh", role: "Senior Developer", email: "riley@example.com", avatar: "", status: "away" },
-  //       { id: "7", name: "Casey Williams", role: "Database Engineer", email: "casey@example.com", avatar: "", status: "offline" },
-  //     ],
-  //     projects: 3,
-  //   },
-  //   {
-  //     id: "3",
-  //     name: "DevOps Team",
-  //     description: "CI/CD pipelines and infrastructure management",
-  //     members: [
-  //       { id: "8", name: "Morgan Lee", role: "DevOps Lead", email: "morgan@example.com", avatar: "", status: "online" },
-  //       { id: "9", name: "Jamie Garcia", role: "Cloud Engineer", email: "jamie@example.com", avatar: "", status: "offline" },
-  //     ],
-  //     projects: 2,
-  //   },
-  // ];
-
-  const handleCreateTeam = () => {
-    setIsCreatingTeam(true);
-    // Simulate team creation
-    setTimeout(() => {
-      setIsCreatingTeam(false);
-      toast({
-        title: "Team created",
-        description: "Your new team has been created successfully.",
-      });
-    }, 1500);
-  };
 
   const fetchMyTeams = async () => {
-    try {
-      const {teams, error} = await getAllTeams();
-      if(error) {
-        toast({variant : 'destructive' , description: error});
-        return;
-      }
-      if (!teams) {
-        toast({ variant: "destructive", description: "No teams found." });
-        return;
-      }
-      setAllTeams(teams);
-      toast({description : "Fetched Teams"});
-      
-    } catch (error) {
-      toast({variant : 'destructive' , description: "Error Occured during fetching Teams"});
-    }
-  }
-
-  const fetchAllTeams = async () => {
     try {
       const {teams, error} = await getMyTeams();
       if(error) {
@@ -142,8 +86,79 @@ const Teams = () => {
       toast({variant : 'destructive' , description: "Error Occured during fetching Teams"});
     }
   }
+
+  const handleDelete = async (teamId: string) => {
+    const confirmed = confirm("Are you sure you want to delete this team?");
+    if (confirmed) {
+      setIsDeleting(true);
+      try {
+        const { message, error } = await deleteTeam(teamId);
+        if (!message || error) {
+          toast({ variant: "destructive", description: error });
+        } else {
+          toast({
+            title: "Team Deleted",
+            description: message,
+          });
+        }
+        fetchMyTeams();
+      } catch {
+        toast({ variant: "destructive", description: `Error deleting the team` });
+      } finally {
+        setIsDeleting(false);
+      }
+    }
+  };
+  const handleCreateTeam = () => {
+    setIsCreatingTeam(true);
+    // Simulate team creation
+    setTimeout(() => {
+      setIsCreatingTeam(false);
+      toast({
+        title: "Team created",
+        description: "Your new team has been created successfully.",
+      });
+    }, 1500);
+  };
+
+  const fetchAllTeams = async () => {
+    setIsLoadingTeams(true);
+    try {
+      const { teams, error } = await getAllTeams();
+      if (error) {
+        toast({ variant: "destructive", description: error });
+        setIsLoadingTeams(false);
+        return;
+      }
+      if (!teams) {
+        toast({ variant: "destructive", description: "No teams found." });
+        setIsLoadingTeams(false);
+        return;
+      }
+      setAllTeams(teams);
+    } catch {
+      toast({ variant: "destructive", description: "Error occurred during fetching Teams" });
+    } finally {
+      setIsLoadingTeams(false);
+    }
+  }
+
+  const fetchUserId = async () => {
+    try {
+      const {id, error} = await getUserId();
+      if(!id || error) {
+        toast({variant:'destructive', description: error})
+        return;
+      }
+      setUserId(id);
+    } catch (error) {
+      toast({variant:'destructive', description: "Error Authorization"});
+      return;
+    }
+  }
   
   useEffect(() => {
+    fetchUserId();
     fetchMyTeams();
     fetchAllTeams();
   },[])
@@ -205,28 +220,6 @@ const Teams = () => {
                     />
                   </div>
                   <div className="mt-2 max-h-40 overflow-y-auto rounded-md border">
-                    {/* {filteredMembers.length > 0 ? (
-                      filteredMembers.map((member) => (
-                        <div key={member.id} className="flex items-center justify-between p-2 hover:bg-accent">
-                          <div className="flex items-center">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                              {member.name.charAt(0)}
-                            </div>
-                            <div className="ml-2">
-                              <div className="text-sm font-medium">{member.name}</div>
-                              <div className="text-xs text-muted-foreground">{member.email}</div>
-                            </div>
-                          </div>
-                          <Button variant="ghost" size="sm" className="h-8 w-8" onClick={() => toast({ title: "Member added", description: `${member.name} has been added to the team.` })}>
-                            <Plus className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="p-2 text-center text-sm text-muted-foreground">
-                        No members found
-                      </div>
-                    )} */}
                   </div>
                 </div>
               </div>
@@ -250,15 +243,38 @@ const Teams = () => {
           <TabsTrigger value="invites">Invites</TabsTrigger>
         </TabsList>
         <TabsContent value="teams" className="space-y-4">
+        {isLoadingTeams ? (
+          <div className="text-center py-10">Loading teams...</div>
+        ) : teams.length === 0 ? (
+          <div className="text-center py-10">No teams available.</div>
+        ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {teams.map((team) => (
               <Card key={team.id}>
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <CardTitle>{team.name}</CardTitle>
-                    <Button variant="ghost" size="icon">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {userId === team.leaderId ? (
+                          <>
+                            {/* <DropdownMenuItem onClick={() => handleEdit(team)}>
+                              Edit
+                            </DropdownMenuItem> */}
+                            <DropdownMenuItem onClick={() => handleDelete(team.id)}>
+                              Delete
+                            </DropdownMenuItem>
+                          </>
+                        ) : (
+                          <DropdownMenuItem disabled>Not authorized</DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                   <CardDescription>{team.description || "No description"}</CardDescription>
                 </CardHeader>
@@ -340,12 +356,7 @@ const Teams = () => {
                         variant="outline"
                         className="w-full"
                         size="sm"
-                        onClick={() =>
-                          toast({
-                            title: "Member Invitation",
-                            description: `Invite members to team "${team.name}".`,
-                          })
-                        }
+                        onClick={() => setInviteModalTeam(team)} // Open modal for this team
                       >
                         <UserPlus className="mr-2 h-4 w-4" />
                         Invite
@@ -355,99 +366,18 @@ const Teams = () => {
                 </CardContent>
               </Card>
             ))}
-
-            {/* {teams.map((team) => (
-              <Card key={team.id}>
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle>{team.name}</CardTitle>
-                    <Button variant="ghost" size="icon">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <CardDescription>{team.description}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="text-sm text-muted-foreground">
-                        <span className="font-medium text-foreground">{team.members.length}</span> members
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        <span className="font-medium text-foreground">{team.projects}</span> projects
-                      </div>
-                    </div>
-                    <div className="flex flex-col space-y-2">
-                      {team.members.slice(0, 3).map((member) => (
-                        <div key={member.id} className="flex items-center justify-between">
-                          <div className="flex items-center">
-                            <div className="relative">
-                              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 text-xs font-medium">
-                                {member.name.split(" ").map(n => n[0]).join("")}
-                              </div>
-                              <span 
-                                className={`absolute bottom-0 right-0 h-2 w-2 rounded-full ring-1 ring-white ${
-                                  member.status === "online" 
-                                    ? "bg-green-500" 
-                                    : member.status === "away" 
-                                    ? "bg-yellow-500" 
-                                    : "bg-gray-500"
-                                }`} 
-                              />
-                            </div>
-                            <div className="ml-2">
-                              <div className="text-sm font-medium">{member.name}</div>
-                              <div className="text-xs text-muted-foreground">{member.role}</div>
-                            </div>
-                          </div>
-                          <div className="flex space-x-1">
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-7 w-7"
-                              onClick={() => toast({ title: "Email sent", description: `Email sent to ${member.name}.` })}
-                            >
-                              <Mail className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                      {team.members.length > 3 && (
-                        <Button 
-                          variant="ghost" 
-                          className="text-sm text-muted-foreground hover:text-foreground"
-                          onClick={() => toast({ title: "View Members", description: "This would show all team members." })}
-                        >
-                          View all {team.members.length} members
-                        </Button>
-                      )}
-                    </div>
-                    <div className="flex space-x-2">
-                      <Button 
-                        variant="outline" 
-                        className="w-full" 
-                        size="sm"
-                        onClick={() => toast({ title: "Team Management", description: "This would open team management." })}
-                      >
-                        <Users className="mr-2 h-4 w-4" />
-                        Manage
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        className="w-full" 
-                        size="sm"
-                        onClick={() => toast({ title: "Member Invitation", description: "This would open the invitation dialog." })}
-                      >
-                        <UserPlus className="mr-2 h-4 w-4" />
-                        Invite
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))} */}
-          </div>
+          </div>   
+        )}
         </TabsContent>
+        {inviteModalTeam && (
+          <InviteUsersModal
+            team={inviteModalTeam}
+            open={Boolean(inviteModalTeam)}
+            onOpenChange={(open) => {
+              if (!open) setInviteModalTeam(null);
+            }}
+          />
+        )}
         <TabsContent value="all">
           <Card>
             <CardHeader>

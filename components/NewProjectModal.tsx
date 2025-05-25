@@ -12,12 +12,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { useState } from 'react';
-
-interface TeamOption {
-  id: string;
-  name: string;
-}
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useEffect, useState } from 'react';
+import { getMyTeams, MyTeam } from '@/app/api/teams/getMyTeams';
+import { useToast } from '@/hooks/use-toast';
 
 interface NewProjectModalProps {
   open: boolean;
@@ -28,7 +26,7 @@ interface NewProjectModalProps {
     githubUrl?: string | undefined | null;
     teamId: string;
   }) => void;
-  onCreateTeam?: (team: { name: string }) => Promise<TeamOption>; // Function to create a new team
+  onCreateTeam?: (team: { name: string }) => Promise<MyTeam>; // Function to create a new team
 }
 
 const NewProjectModal = ({
@@ -40,39 +38,69 @@ const NewProjectModal = ({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [githubUrl, setGithubUrl] = useState('');
+  const [useNewTeam, setUseNewTeam] = useState(false);
+  const [existingTeams, setExistingTeams] = useState<MyTeam[]>([]);
+  const [selectedTeamId, setSelectedTeamId] = useState<string>('');
   const [newTeamName, setNewTeamName] = useState('');
   const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    // Fetch existing teams
+    const fetchTeams = async () => {
+      try {
+        const {teams, error} = await getMyTeams();
+        if(error) {
+          toast({variant:'destructive' , description: error})
+          return;
+        }
+        if(!teams) {
+          toast({variant:'destructive' , description: "Error Loading Teams!"})
+          return;
+        }
+        setExistingTeams(teams);
+      } catch (error) {
+        toast({variant:'destructive' , description: "Unexpected Error Occurred!"})
+      }
+    };
+    if (open) fetchTeams();
+  }, [open]);
 
   const handleCreate = async () => {
-    if (!title || !newTeamName) return;
+    if (!title || (!useNewTeam && !selectedTeamId)) return;
 
     setLoading(true);
 
     try {
-      // Create a new team
-      const newTeam = await onCreateTeam?.({ name: newTeamName });
+      let teamId = selectedTeamId;
 
-      if (newTeam?.id) {
-        // Call the onCreate function to create the project with the new team
-        onCreate?.({
-          title,
-          description,
-          githubUrl,
-          teamId: newTeam.id, // Use the newly created team's ID
-        });
-        setLoading(false);
-        onClose();
-      } else {
-        throw new Error('Failed to create new team.');
+      // Create new team if selected
+      if (useNewTeam) {
+        if (!newTeamName) return;
+        const newTeam = await onCreateTeam?.({ name: newTeamName });
+        if (!newTeam?.id) throw new Error('Failed to create new team.');
+        teamId = newTeam.id;
       }
+
+      // Proceed with creating the project
+      await onCreate?.({
+        title,
+        description,
+        githubUrl,
+        teamId,
+      });
+
+      onClose(); // Close modal
     } catch (err) {
       console.error('Error creating project or team:', err);
-      setLoading(false);
     } finally {
-      setTitle('')
-      setDescription('')
-      setGithubUrl('')
-      setNewTeamName('')
+      setTitle('');
+      setDescription('');
+      setGithubUrl('');
+      setNewTeamName('');
+      setSelectedTeamId('');
+      setUseNewTeam(false);
+      setLoading(false);
     }
   };
 
@@ -82,7 +110,7 @@ const NewProjectModal = ({
         <DialogHeader>
           <DialogTitle>New Project</DialogTitle>
           <DialogDescription>
-            Create a new project and a new team to track tasks and progress.
+            Create a new project under a team (existing or new).
           </DialogDescription>
         </DialogHeader>
 
@@ -103,13 +131,37 @@ const NewProjectModal = ({
           </div>
 
           <div>
-            <Label htmlFor="new-team">New Team Name</Label>
-            <Input
-              id="new-team"
-              placeholder="Enter new team name"
-              value={newTeamName}
-              onChange={(e) => setNewTeamName(e.target.value)}
-            />
+            <div className="flex items-center justify-between">
+              <Label>Team</Label>
+              <Button
+                variant="link"
+                className="text-sm"
+                onClick={() => setUseNewTeam((prev) => !prev)}
+              >
+                {useNewTeam ? 'Select Existing Team' : 'Create New Team'}
+              </Button>
+            </div>
+
+            {useNewTeam ? (
+              <Input
+                placeholder="Enter new team name"
+                value={newTeamName}
+                onChange={(e) => setNewTeamName(e.target.value)}
+              />
+            ) : (
+              <Select value={selectedTeamId} onValueChange={setSelectedTeamId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select existing team" />
+                </SelectTrigger>
+                <SelectContent>
+                  {existingTeams.map((team) => (
+                    <SelectItem key={team.id} value={team.id}>
+                      {team.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
         </div>
 
@@ -117,10 +169,7 @@ const NewProjectModal = ({
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button
-            onClick={handleCreate}
-            disabled={loading || !title || !newTeamName}
-          >
+          <Button onClick={handleCreate} disabled={loading || !title || (useNewTeam && !newTeamName)}>
             {loading ? 'Creating...' : 'Create Project'}
           </Button>
         </DialogFooter>
