@@ -14,12 +14,14 @@ model User {
   image     String?
   createdAt DateTime @default(now())
 
-  teams           TeamMember[]
-  tasks           Task[] // tasks assigned to this user
-  meetings        Meeting[]    @relation("UserMeetings")
-  createdMeetings Meeting[]    @relation("CreatedMeetings")
-  createdEvents   Event[]      @relation("CreatedEvents")
-  ledTeams        Team[]       @relation("LedTeams")
+  teams               TeamMember[]
+  tasks               Task[] // tasks assigned to this user
+  meetings            Meeting[]        @relation("UserMeetings")
+  createdMeetings     Meeting[]        @relation("CreatedMeetings")
+  createdEvents       Event[]          @relation("CreatedEvents")
+  ledTeams            Team[]           @relation("LedTeams")
+  sentInvitations     TeamInvitation[] @relation("Inviter")
+  receivedInvitations TeamInvitation[] @relation("Invitee")
 }
 
 model Team {
@@ -28,9 +30,10 @@ model Team {
   createdAt DateTime @default(now())
   leaderId  String
 
-  leader   User         @relation("LedTeams", fields: [leaderId], references: [id], onDelete: Cascade)
-  members  TeamMember[]
-  projects Project[]
+  leader         User             @relation("LedTeams", fields: [leaderId], references: [id], onDelete: Cascade)
+  members        TeamMember[]
+  projects       Project[]
+  TeamInvitation TeamInvitation[]
 }
 
 model TeamMember {
@@ -93,4 +96,25 @@ enum TaskStatus {
   PENDING
   IN_PROGRESS
   COMPLETED
+}
+
+model TeamInvitation {
+  id        String       @id @default(cuid())
+  teamId    String
+  invitedBy String // user who sent the invite
+  invitedTo String // user who is being invited
+  status    InviteStatus @default(PENDING)
+  createdAt DateTime     @default(now())
+
+  team    Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  inviter User @relation("Inviter", fields: [invitedBy], references: [id], onDelete: Cascade)
+  invitee User @relation("Invitee", fields: [invitedTo], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, invitedTo]) // Prevent duplicate invites
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
 }

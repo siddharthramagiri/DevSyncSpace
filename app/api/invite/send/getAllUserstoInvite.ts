@@ -3,12 +3,12 @@
 import prisma from "@/lib/prisma"
 import { User } from "@/lib/types"
 
-export default async function getAllUsers(id: string) : 
-Promise<{users ?: User[], error? : string}> {
+export default async function getAllUserstoInvite(teamId: string): 
+Promise<{ users?: User[], error?: string }> {
     try {
         const existingMembers = await prisma.teamMember.findMany({
-        where: { id },
-        select: { userId: true },
+            where: { teamId },
+            select: { userId: true },
         });
 
         const memberIds = existingMembers.map((m) => m.userId);
@@ -27,12 +27,12 @@ Promise<{users ?: User[], error? : string}> {
 
         const users: User[] = availableUsers.map(user => ({
             ...user,
-            name: user.name === null ? undefined : user.name,
+            name: user.name ?? undefined,
             createdAt: user.createdAt.toISOString(),
-        }))
+        }));
 
-        return {users};
+        return { users };
     } catch (error) {
-        return {error : "Error Fetching the Users"};
+        return { error: "Error Fetching the Users" };
     }
-} 
+}

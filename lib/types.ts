@@ -19,6 +19,9 @@ export interface User {
   createdMeetings?: Meeting[];     // as creator
   createdEvents?: Event[];         // as creator
   ledTeams?: Team[];               // as leader
+
+  sentInvitations?: TeamInvitation[];     // new
+  receivedInvitations?: TeamInvitation[]; // new
 }
 
 // Team
@@ -90,4 +93,23 @@ export interface Event {
   createdById: string;
 
   creator?: User;
+}
+
+export enum InviteStatus {
+  PENDING = "PENDING",
+  ACCEPTED = "ACCEPTED",
+  DECLINED = "DECLINED",
+}
+
+export interface TeamInvitation {
+  id: string;
+  teamId: string;
+  invitedBy: string;  // inviter's userId
+  invitedTo: string;  // invitee's userId
+  status: InviteStatus;
+  createdAt: string;
+
+  team?: Team;
+  inviter?: User;
+  invitee?: User;
 }

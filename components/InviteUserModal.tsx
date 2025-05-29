@@ -9,8 +9,7 @@ import {
 } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { toast } from "@/hooks/use-toast";
-import getAllUsers from "@/app/api/user/getAllUsers";
+import getAllUserstoInvite from "@/app/api/invite/send/getAllUserstoInvite";
 import { useToast } from "@/hooks/use-toast";
 import { User } from "@/lib/types";
 import { MyTeam } from "@/app/api/teams/getMyTeams";
@@ -30,7 +29,7 @@ export function InviteUsersModal({ team, open, onOpenChange }: InviteUsersModalP
 
   const fetchAllUsers = async (id: string) => {
     try {
-        const {users, error} = await getAllUsers(id);
+        const {users, error} = await getAllUserstoInvite(id);
         if(!users || error) {
             toast({variant: 'destructive', description: error});
             return;
@@ -51,12 +50,41 @@ export function InviteUsersModal({ team, open, onOpenChange }: InviteUsersModalP
       u.email.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleInvite = (user: User) => {
+  const handleInvite = async (user: User) => {
     toast({
       title: "Invitation Sent",
       description: `Invited ${user.name} to team "${team.name}"`,
     });
     // Add your API call for invitation here
+    try {
+      const res = await fetch("/api/invite/send/inviteToTeam", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        teamId: team.id,
+        invitedToId: user.id,
+      }),
+    });
+
+    if (res.ok) {
+      toast({
+        title: "Invitation Sent",
+        description: `Invited ${user.name} to team "${team.name}"`,
+      });
+    } else {
+      const data = await res.json();
+      toast({
+        title: "Failed to Send Invitation",
+        description: data.message || "Something went wrong.",
+        variant: "destructive",
+      });
+    }
+
+    } catch (error) {
+
+    }
   };
 
   return (
