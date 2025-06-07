@@ -21,6 +21,12 @@ import { useRouter } from "next/navigation";
 import getUserId from "@/app/api/user/getUserId";
 import { deleteTeam } from "@/app/api/teams/DeleteTeam";
 import { InviteUsersModal } from "@/components/InviteUserModal";
+import { TeamInvitation } from "@/lib/types";
+import { getMyInvitations } from "@/app/api/invite/get/getMyInvitations";
+import { acceptInvitation } from "@/app/api/invite/accept/acceptInvitation";
+import { declineInvitation } from "@/app/api/invite/decline/declineInvitation";
+import { RefreshCw } from "lucide-react";
+import ManageTeamModal from "@/components/ManageTeamModal";
 
 export interface TeamMemberUser {
   id: string;
@@ -59,14 +65,15 @@ const Teams = () => {
   const [teams, setTeams] = useState<MyTeam[]>([]);
   const [allTeams, setAllTeams] = useState<MyTeam[]>([]);
   const [userId, setUserId] = useState('');
-  const [selectedTeam, setSelectedTeam] = useState<MyTeam>();
+  const [selectedTeam, setSelectedTeam] = useState<MyTeam | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const router = useRouter();
   const [isLoadingTeams, setIsLoadingTeams] = useState(true);  // loading teams on fetch
   const [isDeleting, setIsDeleting] = useState(false);  
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [inviteModalTeam, setInviteModalTeam] = useState<MyTeam | null>(null);
-
+  const [invitations, setInvitations] = useState<TeamInvitation[]>([]);
+  const [manageModalOpen, setManageModalOpen] = useState(false);
 
   const fetchMyTeams = async () => {
     try {
@@ -156,11 +163,46 @@ const Teams = () => {
       return;
     }
   }
+
+  const fetchInvitations = async () => {
+    try {
+      const { invitations, error } = await getMyInvitations();
+      if (error) {
+        toast({ variant: "destructive", description: error });
+        return;
+      }
+      setInvitations(invitations || []);
+    } catch (err) {
+      toast({ variant: "destructive", description: "Failed to fetch invitations" });
+    }
+  };
+
+  const handleAccept = async (inviteId: string, teamId: string) => {
+    const { message, error } = await acceptInvitation(inviteId, teamId);
+    if (error) {
+      toast({ variant: "destructive", description: error });
+    } else {
+      toast({ title: "Invitation Accepted", description: message });
+      fetchInvitations();
+      fetchMyTeams();
+    }
+  };
+
+  const handleDecline = async (inviteId: string) => {
+    const { message, error } = await declineInvitation(inviteId);
+    if (error) {
+      toast({ variant: "destructive", description: error });
+    } else {
+      toast({ title: "Invitation Declined", description: message });
+      fetchInvitations();
+    }
+  };
   
   useEffect(() => {
     fetchUserId();
     fetchMyTeams();
     fetchAllTeams();
+    fetchInvitations();
   },[])
 
   // const availableMembers: TeamMember[] = [
@@ -185,6 +227,14 @@ const Teams = () => {
           <p className="text-muted-foreground">Manage your teams and team members.</p>
         </div>
         <div className="mt-4 sm:mt-0">
+          <Button className="mx-5" variant="outline" onClick={() => {
+            fetchUserId();
+            fetchMyTeams();
+            fetchAllTeams();
+            fetchInvitations();
+          }}>
+            <RefreshCw className="h-4 w-4" />
+          </Button>
           <Dialog>
             <DialogTrigger asChild>
               <Button>
@@ -337,31 +387,32 @@ const Teams = () => {
                         </Button>
                       )}
                     </div>
-                    <div className="flex space-x-2 justify-end">
-                      <Button
-                        variant="outline"
-                        className="w-full"
-                        size="sm"
-                        onClick={() =>
-                          toast({
-                            title: "Team Management",
-                            description: `Managing team "${team.name}".`,
-                          })
-                        }
-                      >
-                        <Users className="mr-2 h-4 w-4" />
-                        Manage
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="w-full"
-                        size="sm"
-                        onClick={() => setInviteModalTeam(team)} // Open modal for this team
-                      >
-                        <UserPlus className="mr-2 h-4 w-4" />
-                        Invite
-                      </Button>
-                    </div>
+                    {userId === team.leaderId && (
+                      <div className="flex space-x-2 justify-end">
+                        <Button
+                          variant="outline"
+                          className="w-full"
+                          size="sm"
+                          onClick={() => {
+                              setSelectedTeam(team);
+                              setManageModalOpen(true);
+                            }
+                          }
+                        >
+                          <Users className="mr-2 h-4 w-4" />
+                          Manage
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="w-full"
+                          size="sm"
+                          onClick={() => setInviteModalTeam(team)} // Open modal for this team
+                        >
+                          <UserPlus className="mr-2 h-4 w-4" />
+                          Invite
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -378,6 +429,15 @@ const Teams = () => {
             }}
           />
         )}
+        {manageModalOpen && (
+          <ManageTeamModal
+            open={manageModalOpen}
+            onOpenChange={setManageModalOpen}
+            team={selectedTeam!}
+            refreshTeams={fetchMyTeams}
+          />
+        )}
+        
         <TabsContent value="all">
           <Card>
             <CardHeader>
@@ -428,61 +488,49 @@ const Teams = () => {
           <Card>
             <CardHeader>
               <CardTitle>Team Invitations</CardTitle>
-              <CardDescription>
-                Pending invitations to teams
-              </CardDescription>
+              <CardDescription>Pending invitations to teams</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="rounded-md border">
-                  <div className="flex items-center justify-between border-b p-4">
-                    <div className="flex-1">
-                      <div className="font-medium">Data Engineering Team</div>
-                      <div className="text-sm text-muted-foreground">Invited by Jordan Chen • 2 days ago</div>
+                {invitations.length > 0 ? (
+                  invitations.map((invite) => (
+                    <div key={invite.id} className="rounded-md border">
+                      <div className="flex items-center justify-between p-4">
+                        <div className="flex-1">
+                          <div className="font-medium">{invite.team?.name}</div>
+                          <div className="text-sm text-muted-foreground">
+                            Invited by {invite.inviter?.name || "Unknown"} •{" "}
+                            {new Date(invite.createdAt).toLocaleDateString()}
+                          </div>
+                        </div>
+                        <div className="flex space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDecline(invite.id)}
+                          >
+                            Decline
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => handleAccept(invite.id, invite.teamId)}
+                          >
+                            Accept
+                          </Button>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex space-x-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => toast({ title: "Invitation Declined", description: "Invitation to Data Engineering Team declined." })}
-                      >
-                        Decline
-                      </Button>
-                      <Button 
-                        size="sm"
-                        onClick={() => toast({ title: "Invitation Accepted", description: "You've joined the Data Engineering Team." })}
-                      >
-                        Accept
-                      </Button>
-                    </div>
+                  ))
+                ) : (
+                  <div className="text-center text-sm text-muted-foreground">
+                    No pending invitations
                   </div>
-                  <div className="flex items-center justify-between p-4">
-                    <div className="flex-1">
-                      <div className="font-medium">Mobile Development Team</div>
-                      <div className="text-sm text-muted-foreground">Invited by Alex Johnson • 5 days ago</div>
-                    </div>
-                    <div className="flex space-x-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => toast({ title: "Invitation Declined", description: "Invitation to Mobile Development Team declined." })}
-                      >
-                        Decline
-                      </Button>
-                      <Button 
-                        size="sm"
-                        onClick={() => toast({ title: "Invitation Accepted", description: "You've joined the Mobile Development Team." })}
-                      >
-                        Accept
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-                <div className="text-center text-sm text-muted-foreground">No more pending invitations</div>
+                )}
               </div>
             </CardContent>
           </Card>
         </TabsContent>
+
       </Tabs>
     </div>
   );

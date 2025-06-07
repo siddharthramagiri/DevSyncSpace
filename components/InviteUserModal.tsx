@@ -1,3 +1,5 @@
+'use client'
+
 import React, { useEffect, useState } from "react";
 import {
   Dialog,
@@ -11,9 +13,17 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import getAllUserstoInvite from "@/app/api/invite/send/getAllUserstoInvite";
 import { useToast } from "@/hooks/use-toast";
-import { User } from "@/lib/types";
 import { MyTeam } from "@/app/api/teams/getMyTeams";
+import { inviteUserToTeams } from "@/app/api/invite/send/inviteUserToTeam";
+import { User } from "@/lib/types";
 
+interface InviteUser {
+  id: string;
+  name?: string;
+  email: string;
+  createdAt: string;
+  inviteStatus?: "PENDING" | "DECLINED" | "ACCEPTED";
+}
 
 interface InviteUsersModalProps {
   team: MyTeam;
@@ -21,28 +31,31 @@ interface InviteUsersModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
+interface InviteUser extends User {
+  inviteStatus?: "PENDING" | "DECLINED" | "ACCEPTED";
+}
+
 export function InviteUsersModal({ team, open, onOpenChange }: InviteUsersModalProps) {
   const [search, setSearch] = useState("");
-  const {toast} = useToast();
-
-  const [users, setUsers] = useState<User[]>([]);
+  const { toast } = useToast();
+  const [users, setUsers] = useState<InviteUser[]>([]);
 
   const fetchAllUsers = async (id: string) => {
     try {
-        const {users, error} = await getAllUserstoInvite(id);
-        if(!users || error) {
-            toast({variant: 'destructive', description: error});
-            return;
-        }
-        setUsers(users);
+      const { users, error } = await getAllUserstoInvite(id);
+      if (!users || error) {
+        toast({ variant: 'destructive', description: error });
+        return;
+      }
+      setUsers(users);
     } catch (error) {
-        toast({variant: 'destructive', description: "Error Fetching Users"});
+      toast({ variant: 'destructive', description: "Error Fetching Users" });
     }
-  }
+  };
 
   useEffect(() => {
     fetchAllUsers(team.id);
-  }, [team.id])
+  }, [team.id]);
 
   const filteredUsers = users.filter(
     (u) =>
@@ -50,50 +63,42 @@ export function InviteUsersModal({ team, open, onOpenChange }: InviteUsersModalP
       u.email.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleInvite = async (user: User) => {
-    toast({
-      title: "Invitation Sent",
-      description: `Invited ${user.name} to team "${team.name}"`,
-    });
-    // Add your API call for invitation here
+  const handleInvite = async (user: InviteUser) => {
     try {
-      const res = await fetch("/api/invite/send/inviteToTeam", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        teamId: team.id,
-        invitedToId: user.id,
-      }),
-    });
+      const { message, error } = await inviteUserToTeams(team.id, user.id);
 
-    if (res.ok) {
+      if (!message || error) {
+        toast({
+          title: "Failed to Send Invitation",
+          description: error,
+          variant: "destructive",
+        });
+        return;
+      }
+
       toast({
         title: "Invitation Sent",
         description: `Invited ${user.name} to team "${team.name}"`,
       });
-    } else {
-      const data = await res.json();
+
+      // Refresh user list to get updated inviteStatus
+      fetchAllUsers(team.id);
+    } catch (error) {
       toast({
         title: "Failed to Send Invitation",
-        description: data.message || "Something went wrong.",
+        description: "Something went wrong.",
         variant: "destructive",
       });
-    }
-
-    } catch (error) {
-
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="w-full max-w-md">
-            <DialogHeader>
-                <DialogTitle>Invite Members</DialogTitle>
-                <DialogDescription>Invite users to your team.</DialogDescription>
-            </DialogHeader>
+      <DialogContent className="w-full max-w-md">
+        <DialogHeader>
+          <DialogTitle>Invite Members</DialogTitle>
+          <DialogDescription>Invite users to your team.</DialogDescription>
+        </DialogHeader>
 
         <Input
           placeholder="Search users by name or email"
@@ -103,11 +108,10 @@ export function InviteUsersModal({ team, open, onOpenChange }: InviteUsersModalP
         />
 
         <div className="h-[400px] overflow-y-auto space-y-3 border rounded-md p-2 bg-muted">
+          {filteredUsers.map((user) => {
+            const status = user.inviteStatus;
 
-          {filteredUsers.length === 0 ? (
-            <p className="text-gray-500 dark:text-gray-400">No users found.</p>
-          ) : (
-            filteredUsers.map((user) => (
+            return (
               <div
                 key={user.id}
                 className="flex justify-between items-center p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
@@ -116,12 +120,27 @@ export function InviteUsersModal({ team, open, onOpenChange }: InviteUsersModalP
                   <p className="font-medium text-gray-900 dark:text-gray-100">{user.name}</p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">{user.email}</p>
                 </div>
-                <Button size="sm" onClick={() => handleInvite(user)}>
-                  Invite
-                </Button>
+
+                {status === "PENDING" ? (
+                  <Button size="sm" variant="outline" disabled>
+                    Pending
+                  </Button>
+                ) : status === "DECLINED" ? (
+                  <Button size="sm" onClick={() => handleInvite(user)}>
+                    Resend
+                  </Button>
+                ) : status === "ACCEPTED" ? (
+                  <Button size="sm" variant="outline" disabled>
+                    Joined
+                  </Button>
+                ) : (
+                  <Button size="sm" onClick={() => handleInvite(user)}>
+                    Invite
+                  </Button>
+                )}
               </div>
-            ))
-          )}
+            );
+          })}
         </div>
 
         <DialogFooter>
