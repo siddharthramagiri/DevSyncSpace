@@ -20,8 +20,11 @@ export interface User {
   createdEvents?: Event[];         // as creator
   ledTeams?: Team[];               // as leader
 
-  sentInvitations?: TeamInvitation[];     // new
-  receivedInvitations?: TeamInvitation[]; // new
+  sentInvitations?: TeamInvitation[];
+  receivedInvitations?: TeamInvitation[];
+
+  sentMessages?: Message[];
+  chatMemberships?: ChatMember[];
 }
 
 // Team
@@ -34,6 +37,8 @@ export interface Team {
   leader?: User;
   members?: TeamMember[];
   projects?: Project[];
+  TeamInvitation?: TeamInvitation[];
+  chats?: Chat[];
 }
 
 // TeamMember (join table)
@@ -112,4 +117,39 @@ export interface TeamInvitation {
   team?: Team;
   inviter?: User;
   invitee?: User;
+}
+
+// Chat
+export interface Chat {
+  id: string;
+  name?: string;
+  isGroup: boolean;
+  teamId?: string;
+  createdAt: string;
+
+  team?: Team;
+  members?: ChatMember[];
+  messages?: Message[];
+}
+
+// ChatMember (join table)
+export interface ChatMember {
+  id: string;
+  chatId: string;
+  userId: string;
+
+  chat?: Chat;
+  user?: User;
+}
+
+// Message
+export interface Message {
+  id: string;
+  content: string;
+  createdAt: string;
+  chatId: string;
+  senderId: string;
+
+  chat?: Chat;
+  sender?: User;
 }

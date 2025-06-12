@@ -15,13 +15,15 @@ model User {
   createdAt DateTime @default(now())
 
   teams               TeamMember[]
-  tasks               Task[] // tasks assigned to this user
+  tasks               Task[]
   meetings            Meeting[]        @relation("UserMeetings")
   createdMeetings     Meeting[]        @relation("CreatedMeetings")
   createdEvents       Event[]          @relation("CreatedEvents")
   ledTeams            Team[]           @relation("LedTeams")
   sentInvitations     TeamInvitation[] @relation("Inviter")
   receivedInvitations TeamInvitation[] @relation("Invitee")
+  sentMessages        Message[]
+  chatMemberships     ChatMember[]
 }
 
 model Team {
@@ -34,6 +36,7 @@ model Team {
   members        TeamMember[]
   projects       Project[]
   TeamInvitation TeamInvitation[]
+  chats          Chat[]
 }
 
 model TeamMember {
@@ -44,7 +47,7 @@ model TeamMember {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, teamId]) // prevent duplicate memberships
+  @@unique([userId, teamId])
 }
 
 model Project {
@@ -92,17 +95,11 @@ model Event {
   creator User @relation("CreatedEvents", fields: [createdById], references: [id], onDelete: Cascade)
 }
 
-enum TaskStatus {
-  PENDING
-  IN_PROGRESS
-  COMPLETED
-}
-
 model TeamInvitation {
   id        String       @id @default(cuid())
   teamId    String
-  invitedBy String // user who sent the invite
-  invitedTo String // user who is being invited
+  invitedBy String
+  invitedTo String
   status    InviteStatus @default(PENDING)
   createdAt DateTime     @default(now())
 
@@ -110,11 +107,51 @@ model TeamInvitation {
   inviter User @relation("Inviter", fields: [invitedBy], references: [id], onDelete: Cascade)
   invitee User @relation("Invitee", fields: [invitedTo], references: [id], onDelete: Cascade)
 
-  @@unique([teamId, invitedTo]) // Prevent duplicate invites
+  @@unique([teamId, invitedTo])
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
 }
 
 enum InviteStatus {
   PENDING
   ACCEPTED
   DECLINED
+}
+
+model Chat {
+  id        String     @id @default(cuid())
+  name      String?
+  isGroup   Boolean    @default(true)
+  teamId    String?
+  createdAt DateTime   @default(now())
+
+  team      Team?      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  messages  Message[]
+  members   ChatMember[]
+}
+
+model ChatMember {
+  id     String @id @default(cuid())
+  chatId String
+  userId String
+
+  chat   Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([chatId, userId])
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  content   String
+  createdAt DateTime @default(now())
+  chatId    String
+  senderId  String
+
+  chat   Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  sender User @relation(fields: [senderId], references: [id], onDelete: Cascade)
 }

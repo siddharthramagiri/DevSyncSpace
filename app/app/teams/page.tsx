@@ -5,7 +5,6 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
 import { useEffect, useState } from "react";
 import {
   DropdownMenu,
@@ -17,7 +16,6 @@ import { Plus, Search, Users, Star, UserPlus, MoreHorizontal, Mail, Github } fro
 import { useToast } from "@/components/ui/use-toast";
 import { getMyTeams } from "@/app/api/teams/getMyTeams";
 import { getAllTeams } from "@/app/api/teams/getAllTeams";
-import { useRouter } from "next/navigation";
 import getUserId from "@/app/api/user/getUserId";
 import { deleteTeam } from "@/app/api/teams/DeleteTeam";
 import { InviteUsersModal } from "@/components/InviteUserModal";
@@ -66,11 +64,8 @@ const Teams = () => {
   const [allTeams, setAllTeams] = useState<MyTeam[]>([]);
   const [userId, setUserId] = useState('');
   const [selectedTeam, setSelectedTeam] = useState<MyTeam | null>(null);
-  const [isEditOpen, setIsEditOpen] = useState(false);
-  const router = useRouter();
   const [isLoadingTeams, setIsLoadingTeams] = useState(true);  // loading teams on fetch
   const [isDeleting, setIsDeleting] = useState(false);  
-  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [inviteModalTeam, setInviteModalTeam] = useState<MyTeam | null>(null);
   const [invitations, setInvitations] = useState<TeamInvitation[]>([]);
   const [manageModalOpen, setManageModalOpen] = useState(false);
