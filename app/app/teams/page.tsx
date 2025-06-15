@@ -25,36 +25,8 @@ import { acceptInvitation } from "@/app/api/invite/accept/acceptInvitation";
 import { declineInvitation } from "@/app/api/invite/decline/declineInvitation";
 import { RefreshCw } from "lucide-react";
 import ManageTeamModal from "@/components/ManageTeamModal";
+import { MyTeam } from "@/app/api/teams/getMyTeams";
 
-export interface TeamMemberUser {
-  id: string;
-  name: string | null;
-  email: string;
-  image: string | null;
-}
-
-export interface TeamMember {
-  id: string;
-  userId: string;
-  teamId: string;
-  user: TeamMemberUser;
-}
-
-export interface MyTeam {
-  id: string;
-  name: string;
-  description?: string;
-  createdAt: string;
-  leaderId:string;
-  leader?: {
-    id: string;
-    name: string | null;
-    email: string;
-    image: string | null;
-  };
-  members: TeamMember[];
-  projects: any[];
-}
 
 const Teams = () => {
   const { toast } = useToast();
@@ -200,20 +172,6 @@ const Teams = () => {
     fetchInvitations();
   },[])
 
-  // const availableMembers: TeamMember[] = [
-  //   { id: "10", name: "Robin Patel", role: "Senior Developer", email: "robin@example.com", avatar: "", status: "online" },
-  //   { id: "11", name: "Avery Johnson", role: "Designer", email: "avery@example.com", avatar: "", status: "online" },
-  //   { id: "12", name: "Quinn Li", role: "Product Manager", email: "quinn@example.com", avatar: "", status: "away" },
-  // ];
-
-  // // Filter available members based on search query
-  // const filteredMembers = availableMembers.filter(
-  //   (member) =>
-  //     member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-  //     member.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
-  //     member.email.toLowerCase().includes(searchQuery.toLowerCase())
-  // );
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col justify-between sm:flex-row sm:items-center">
@@ -308,9 +266,6 @@ const Teams = () => {
                       <DropdownMenuContent align="end">
                         {userId === team.leaderId ? (
                           <>
-                            {/* <DropdownMenuItem onClick={() => handleEdit(team)}>
-                              Edit
-                            </DropdownMenuItem> */}
                             <DropdownMenuItem onClick={() => handleDelete(team.id)}>
                               Delete
                             </DropdownMenuItem>

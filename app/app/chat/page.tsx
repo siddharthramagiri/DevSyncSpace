@@ -8,6 +8,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Search, Paperclip, Send, User, Users, MoreVertical, Video, Phone, ChevronRight, Smile, Code, Image } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
+import { MyTeam, TeamMemberUser } from "@/app/api/teams/getMyTeams";
+import { getMyTeams } from "@/app/api/teams/getMyTeams";
+import { getTeamMembersForUser } from "@/app/api/chats/getTeamMembersForUser";
+import { TeamMember, ChatMember, User as AppUser } from "@/lib/types";
+import getUserId from "@/app/api/user/getUserId";
 
 // Sample conversations data
 const directMessages = [
@@ -40,33 +45,6 @@ const directMessages = [
   },
 ];
 
-const teamChannels = [
-  {
-    id: "1",
-    name: "Frontend Team",
-    lastMessage: "Alex Johnson: Let's discuss the new dashboard layout",
-    time: "11:15 AM",
-    unread: 5,
-    avatar: "",
-  },
-  {
-    id: "2",
-    name: "Project Alpha",
-    lastMessage: "Mira Patel: The client approved the designs",
-    time: "Yesterday",
-    unread: 0,
-    avatar: "",
-  },
-  {
-    id: "3",
-    name: "Backend Team",
-    lastMessage: "Jordan Chen: We need to optimize the database queries",
-    time: "3 days ago",
-    unread: 0,
-    avatar: "",
-  },
-];
-
 // Sample messages for a conversation
 const sampleMessages = [
   {
@@ -83,49 +61,6 @@ const sampleMessages = [
     time: "10:32 AM",
     isMe: true,
   },
-  {
-    id: "3",
-    sender: "Alex Johnson",
-    content: "Great! Do you think we'll be able to finish it by the end of the week?",
-    time: "10:35 AM",
-    isMe: false,
-  },
-  {
-    id: "4",
-    sender: "You",
-    content: "Yes, I should have it ready for testing by Thursday.",
-    time: "10:36 AM",
-    isMe: true,
-  },
-  {
-    id: "5",
-    sender: "Alex Johnson",
-    content: "Perfect! By the way, have you seen this code snippet for the token refresh logic?",
-    time: "10:38 AM",
-    isMe: false,
-  },
-  {
-    id: "6",
-    sender: "Alex Johnson",
-    content: "```javascript\nconst refreshToken = async () => {\n  try {\n    const response = await fetch('/api/refresh', {\n      method: 'POST',\n      headers: {\n        'Content-Type': 'application/json'\n      },\n      body: JSON.stringify({\n        refreshToken: localStorage.getItem('refreshToken')\n      })\n    });\n    \n    const data = await response.json();\n    localStorage.setItem('accessToken', data.accessToken);\n    return data.accessToken;\n  } catch (error) {\n    console.error('Failed to refresh token:', error);\n    // Handle error - redirect to login, etc.\n  }\n};\n```",
-    time: "10:39 AM",
-    isMe: false,
-    isCode: true,
-  },
-  {
-    id: "7",
-    sender: "You",
-    content: "This looks good! I'll incorporate it into the auth service. Thanks for sharing.",
-    time: "10:40 AM",
-    isMe: true,
-  },
-  {
-    id: "8",
-    sender: "Alex Johnson",
-    content: "No problem! What's the status on the authentication module?",
-    time: "10:42 AM",
-    isMe: false,
-  },
 ];
 
 const Chat = () => {
@@ -138,9 +73,63 @@ const Chat = () => {
     status: "online",
     avatar: "",
     isTeam: false,
+    members: [], // Add members property to avoid type errors
   });
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [teams, setTeams] = useState<MyTeam[]>([]);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [currentUserId, setCurrentUserId] = useState("");
+
+  const fetchMyTeams = async () => {
+    try {
+      const {teams, error} = await getMyTeams();
+      if(error) {
+        toast({variant : 'destructive' , description: error});
+        return;
+      }
+      if (!teams) {
+        toast({ variant: "destructive", description: "No teams found." });
+        return;
+      }
+      setTeams(teams);
+      toast({description : "Fetched Teams"});
+      
+    } catch (error) {
+      toast({variant : 'destructive' , description: "Error Occured during fetching Teams"});
+    }
+  }
+
+  const fetchMembers = async () => {
+    const directMembers: TeamMember[] = await getTeamMembersForUser();
+    setTeamMembers(directMembers);
+  };
+
+  useEffect(() => {
+    const getCurrentUser = async() => {
+        const { id, error } = await getUserId();
+        if(!id || error) {
+          return;
+        }
+        setCurrentUserId(id);
+    }
+
+    getCurrentUser();
+  }, [])
+
+  useEffect(() => {
+    fetchMyTeams();
+    fetchMembers();
+  }, [])
+
+  function getOtherMember(members: ChatMember[], currentUserId: string): AppUser | undefined {
+    return members.find((m) => m.userId !== currentUserId)?.user;
+  }
+
+  function getUserStatus(user?: AppUser): "online" | "away" | "offline" {
+    // Replace this with your actual presence logic
+    return "offline";
+  }
 
   // Scroll to bottom of chat when messages change
   useEffect(() => {
@@ -198,6 +187,7 @@ const Chat = () => {
       status: chat.status || "offline",
       avatar: chat.avatar,
       isTeam,
+      members : []
     });
     // In a real app, we would fetch messages for this chat
   };
@@ -251,48 +241,79 @@ const Chat = () => {
           <TabsContent value="direct" className="border-0 p-0">
             <ScrollArea className="h-[calc(100vh-12rem)]">
               <div className="space-y-1 p-2">
-                {directMessages.map((chat) => (
-                  <div
-                    key={chat.id}
-                    className={cn(
-                      "flex cursor-pointer items-center justify-between rounded-md p-2 hover:bg-accent",
-                      activeChat.id === chat.id && !activeChat.isTeam && "bg-accent"
-                    )}
-                    onClick={() => selectChat(chat)}
-                  >
-                    <div className="flex items-center">
-                      <div className="relative mr-2">
-                        <Avatar>
-                          <AvatarFallback>{chat.name.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <span 
-                          className={cn(
-                            "absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-background",
-                            chat.status === "online" ? "bg-green-500" :
-                            chat.status === "away" ? "bg-yellow-500" : 
-                            "bg-gray-400"
-                          )} 
-                        />
-                      </div>
-                      <div>
+                {teamMembers
+                  .filter((member) => member.user && member.user.id !== currentUserId)
+                  .map((member) => {
+                    const user = member.user!;
+                    // Using sample directMessages as the data source for direct chats
+                    const userChat = directMessages.find((chat) =>
+                      chat.name === user.name
+                    );
+
+                    const lastMessage = userChat
+                      ? {
+                          content: userChat.lastMessage,
+                          createdAt: userChat.time,
+                        }
+                      : undefined;
+                    const unreadCount = userChat?.unread ?? 0;
+
+                    return (
+                      <div
+                        key={user.id}
+                        className={cn(
+                          "flex cursor-pointer items-center justify-between rounded-md p-2 hover:bg-accent",
+                          activeChat.id === userChat?.id && !activeChat.isTeam && "bg-accent"
+                        )}
+                        onClick={() =>
+                          selectChat({
+                            id: userChat?.id ?? "temp-" + user.id,
+                            name: user.name || user.email,
+                            avatar: user.image,
+                            status: "offline", // Replace with real-time presence data if available
+                            isTeam: false,
+                            unread: unreadCount ?? 0,
+                            lastMessage: lastMessage?.content ?? "",
+                            time: lastMessage
+                              ? new Date(lastMessage.createdAt).toLocaleTimeString()
+                              : "",
+                          })
+                        }
+                      >
                         <div className="flex items-center">
-                          <div className="font-medium">{chat.name}</div>
-                          {chat.unread > 0 && (
-                            <div className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-medium text-primary-foreground">
-                              {chat.unread}
+                          <div className="relative mr-2">
+                            <Avatar>
+                              <AvatarFallback>{user.name?.charAt(0) ?? "U"}</AvatarFallback>
+                            </Avatar>
+                            <span
+                              className={cn(
+                                "absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-background",
+                                "bg-gray-400" // Replace with online status color if available
+                              )}
+                            />
+                          </div>
+                          <div>
+                            <div className="flex items-center">
+                              <div className="font-medium">{user.name || user.email}</div>
+                              {unreadCount > 0 && (
+                                <div className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-medium text-primary-foreground">
+                                  {unreadCount}
+                                </div>
+                              )}
                             </div>
-                          )}
+                            <div className="text-sm text-muted-foreground line-clamp-1">
+                              {lastMessage?.content || "Start chatting"}
+                            </div>
+                          </div>
                         </div>
-                        <div className="text-sm text-muted-foreground line-clamp-1">
-                          {chat.lastMessage}
+                        <div className="text-xs text-muted-foreground">
+                          {lastMessage
+                            ? new Date(lastMessage.createdAt).toLocaleTimeString()
+                            : ""}
                         </div>
                       </div>
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {chat.time}
-                    </div>
-                  </div>
-                ))}
+                    );
+                  })}
               </div>
             </ScrollArea>
           </TabsContent>
@@ -300,42 +321,54 @@ const Chat = () => {
           <TabsContent value="teams" className="border-0 p-0">
             <ScrollArea className="h-[calc(100vh-12rem)]">
               <div className="space-y-1 p-2">
-                {teamChannels.map((chat) => (
-                  <div
-                    key={chat.id}
-                    className={cn(
-                      "flex cursor-pointer items-center justify-between rounded-md p-2 hover:bg-accent",
-                      activeChat.id === chat.id && activeChat.isTeam && "bg-accent"
-                    )}
-                    onClick={() => selectChat(chat, true)}
-                  >
-                    <div className="flex items-center">
-                      <div className="mr-2">
-                        <Avatar>
-                          <AvatarFallback>
-                            <Users className="h-4 w-4" />
-                          </AvatarFallback>
-                        </Avatar>
+                {teams.map((team) => {
+                  const lastTeamChat = team.chats?.[0]; // or use sorting logic for latest chat
+                  const lastMessage = (lastTeamChat && 'messages' in lastTeamChat && Array.isArray((lastTeamChat as any).messages))
+                    ? (lastTeamChat as any).messages[(lastTeamChat as any).messages.length - 1]
+                    : undefined;
+                  const unreadCount = 0;
+
+                  return (
+                    <div
+                      key={team.id}
+                      className={cn(
+                        "flex cursor-pointer items-center justify-between rounded-md p-2 hover:bg-accent",
+                        activeChat.id === team.id && activeChat.isTeam && "bg-accent"
+                      )}
+                      onClick={() => selectChat(team, true)}
+                    >
+                      <div className="flex items-center">
+                        <div className="mr-2">
+                          <Avatar>
+                            {team.leader?.image ? (
+                              <AvatarImage src={team.leader.image} />
+                            ) : (
+                              <AvatarFallback>
+                                <Users className="h-4 w-4" />
+                              </AvatarFallback>
+                            )}
+                          </Avatar>
+                        </div>
+                        <div>
+                          <div className="flex items-center">
+                            <div className="font-medium">{team.name}</div>
+                            {unreadCount > 0 && (
+                              <div className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-medium text-primary-foreground">
+                                {unreadCount}
+                              </div>
+                            )}
+                          </div>
+                          <div className="text-sm text-muted-foreground line-clamp-1">
+                            {lastMessage ? lastMessage.content : `${team.members.length} members`}
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <div className="flex items-center">
-                          <div className="font-medium">{chat.name}</div>
-                          {chat.unread > 0 && (
-                            <div className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-medium text-primary-foreground">
-                              {chat.unread}
-                            </div>
-                          )}
-                        </div>
-                        <div className="text-sm text-muted-foreground line-clamp-1">
-                          {chat.lastMessage}
-                        </div>
+                      <div className="text-xs text-muted-foreground">
+                        {lastMessage ? new Date(lastMessage.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
                       </div>
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                      {chat.time}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </ScrollArea>
           </TabsContent>
@@ -344,88 +377,70 @@ const Chat = () => {
       
       {/* Chat Area */}
       <div className="flex flex-1 flex-col">
-        {/* Chat Header */}
+        {/* Header */}
         <div className="flex h-16 items-center justify-between border-b px-4">
           <div className="flex items-center">
             <Avatar className="h-8 w-8">
               <AvatarFallback>
-                {activeChat.isTeam ? <Users className="h-4 w-4" /> : activeChat.name.charAt(0)}
+                {activeChat.isTeam 
+                  ? <Users className="h-4 w-4" /> 
+                  : getOtherMember(activeChat.members || [], currentUserId)?.name?.[0] ?? "?"}
               </AvatarFallback>
             </Avatar>
             <div className="ml-2">
               <div className="font-medium">{activeChat.name}</div>
               {!activeChat.isTeam && (
                 <div className="flex items-center text-xs text-muted-foreground">
-                  <div 
-                    className={cn(
-                      "mr-1.5 h-1.5 w-1.5 rounded-full",
-                      activeChat.status === "online" ? "bg-green-500" :
-                      activeChat.status === "away" ? "bg-yellow-500" : 
-                      "bg-gray-400"
-                    )} 
-                  />
-                  {activeChat.status === "online" ? "Online" : 
-                   activeChat.status === "away" ? "Away" : "Offline"}
+                  <div className={cn(
+                    "mr-1.5 h-1.5 w-1.5 rounded-full",
+                    getUserStatus(getOtherMember(activeChat.members || [], currentUserId)) === "online"
+                      ? "bg-green-500"
+                      : getUserStatus(getOtherMember(activeChat.members || [], currentUserId)) === "away"
+                      ? "bg-yellow-500"
+                      : "bg-gray-400"
+                  )} />
+                  {getUserStatus(getOtherMember(activeChat.members || [], currentUserId))}
                 </div>
               )}
             </div>
           </div>
           <div className="flex items-center space-x-2">
-            <Button 
-              variant="ghost" 
-              size="icon"
-              onClick={() => window.location.href = "/app/meeting/123456"}
-            >
+            <Button variant="ghost" size="icon" onClick={() => window.location.href = `/app/meeting/${activeChat.id}`}>
               <Video className="h-5 w-5" />
             </Button>
-            <Button 
-              variant="ghost" 
-              size="icon"
-              onClick={() => toast({ title: "Audio Call", description: "This would start an audio call" })}
-            >
+            <Button variant="ghost" size="icon" onClick={() => toast({ title: "Audio Call", description: "Starting audio call..." })}>
               <Phone className="h-5 w-5" />
             </Button>
-            <Button 
-              variant="ghost" 
-              size="icon"
-              onClick={() => toast({ title: "Chat Info", description: "This would show chat information and settings" })}
-            >
+            <Button variant="ghost" size="icon" onClick={() => toast({ title: "Chat Info", description: "Show chat settings..." })}>
               <MoreVertical className="h-5 w-5" />
             </Button>
           </div>
         </div>
-        
-        {/* Messages Area */}
+
+        {/* Messages */}
         <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
           <div className="space-y-4">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={cn(
-                  "flex",
-                  message.isMe ? "justify-end" : "justify-start"
-                )}
-              >
-                <div
-                  className={cn(
+            {messages.map((message) => {
+              const isMe = message.sender === currentUserId;
+              return (
+                <div key={message.id} className={cn("flex", isMe ? "justify-end" : "justify-start")}>
+                  <div className={cn(
                     "max-w-[75%] rounded-lg px-4 py-2",
-                    message.isMe
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted"
-                  )}
-                >
-                  {!message.isMe && (
-                    <div className="mb-1 text-xs font-medium">{message.sender}</div>
-                  )}
-                  <div className={message.isCode ? "" : "text-sm"}>
-                    {renderMessage(message)}
-                  </div>
-                  <div className="mt-1 text-right text-xs opacity-70">
-                    {message.time}
+                    isMe ? "bg-primary text-primary-foreground" : "bg-muted"
+                  )}>
+                    {!isMe && (
+                      <div className="mb-1 text-xs font-medium">
+                        {message.sender ?? "Unknown"}
+                      </div>
+                    )}
+                    <div className="text-sm">{message.content}</div>
+                    <div className="mt-1 text-right text-xs opacity-70">
+                      {new Date(message.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </ScrollArea>
         

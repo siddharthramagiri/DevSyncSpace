@@ -2,6 +2,7 @@
 import prisma from "@/lib/prisma"; // Assuming you are using Prisma ORM, change if you're using a different ORM
 import getUserId from "../user/getUserId";
 import { Team } from "@/lib/types";
+import { TeamInvitation, Chat } from "@prisma/client";
 
 export interface TeamMemberUser {
   id: string;
@@ -31,6 +32,8 @@ export interface MyTeam {
   };
   members: TeamMember[];
   projects: any[];
+  TeamInvitation: TeamInvitation[];
+  chats: Chat[];
 }
 
 export async function getMyTeams(): Promise<{
@@ -66,6 +69,8 @@ export async function getMyTeams(): Promise<{
         projects: {
           
         },
+        TeamInvitation : {},
+        chats: {}
       },
     });
 
