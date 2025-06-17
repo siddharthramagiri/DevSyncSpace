@@ -11,7 +11,7 @@ export function useChat(chatId: string | null) {
 
     try {
       setLoading(true);
-      const response = await fetch(`/api/chats/${chatId}`);
+      const response = await fetch(`/api/chat/${chatId}`);
       if (!response.ok) throw new Error('Failed to fetch chat');
       const data = await response.json();
       setChat(data);

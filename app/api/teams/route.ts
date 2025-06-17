@@ -38,3 +38,50 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
+
+
+export async function GET(req: Request) {
+  try {
+    const {id, error} = await getUserId();
+    if(!id || error) {
+        return NextResponse.json({ error: 'Session or Server Error' }, { status: 500 });
+    }
+
+    // Get teams where user is a member or leader
+    const teams = await prisma.team.findMany({
+      where: {
+        OR: [
+          {
+            leaderId: id
+          },
+          {
+            members: {
+              some: {
+                userId: id
+              }
+            }
+          }
+        ]
+      },
+      select: {
+        id: true,
+        name: true,
+        createdAt: true,
+        leaderId: true,
+        _count: {
+          select: {
+            members: true
+          }
+        }
+      },
+      orderBy: {
+        name: 'asc'
+      }
+    });
+
+    return NextResponse.json(teams);
+  } catch (error) {
+    console.error('Error fetching teams:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}

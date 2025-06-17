@@ -28,7 +28,7 @@ export function useChats() {
   const fetchChats = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/chats');
+      const response = await fetch('/api/chat');
       if (!response.ok) throw new Error('Failed to fetch chats');
       const data = await response.json();
       setChats(data);
@@ -41,7 +41,7 @@ export function useChats() {
 
   const createDirectChat = useCallback(async (userId: string) => {
     try {
-      const response = await fetch('/api/chats/direct', {
+      const response = await fetch('/api/chat/direct', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId })
@@ -58,7 +58,7 @@ export function useChats() {
 
   const createGroupChat = useCallback(async (name: string, memberIds: string[], teamId?: string) => {
     try {
-      const response = await fetch('/api/chats', {
+      const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 

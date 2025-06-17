@@ -22,7 +22,7 @@ export function useMessages(chatId: string | null) {
 
     try {
       setLoading(true);
-      const response = await fetch(`/api/chats/${chatId}/messages?page=${pageNum}&limit=50`);
+      const response = await fetch(`/api/chat/${chatId}/messages?page=${pageNum}&limit=50`);
       if (!response.ok) throw new Error('Failed to fetch messages');
       const data = await response.json();
       
@@ -44,7 +44,7 @@ export function useMessages(chatId: string | null) {
     if (!chatId || !content.trim()) return;
 
     try {
-      const response = await fetch(`/api/chats/${chatId}/messages`, {
+      const response = await fetch(`/api/chat/${chatId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: content.trim() })

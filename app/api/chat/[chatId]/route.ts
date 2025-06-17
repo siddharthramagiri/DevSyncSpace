@@ -1,12 +1,12 @@
-// app/api/chats/[chatId]/route.ts
+// app/api/chat/[chatId]/route.ts
 
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import getUserId from '../../user/getUserId';
 
-export async function GET(
+export async function POST(
   req: NextRequest,
-  { params }: { params: { chatId: string } }
+  context: { params: Promise<{ chatId: string }> }
 ) {
   try {
     
@@ -15,10 +15,11 @@ export async function GET(
         throw new Error("Error");
     }
 
+    const { chatId } = await context.params;
 
     const chat = await prisma.chat.findFirst({
       where: {
-        id: params.chatId,
+        id: chatId,
         members: {
           some: {
             userId: id

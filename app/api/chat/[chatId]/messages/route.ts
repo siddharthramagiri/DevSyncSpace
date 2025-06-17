@@ -1,30 +1,27 @@
-// app/api/chats/[chatId]/messages/route.ts
+// app/api/chat/[chatId]/messages/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import getUserId from '@/app/api/user/getUserId';
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { chatId: string } }
+  context: { params: Promise<{ chatId: string }> }
 ) {
   try {
-    
-    const {id, error} = await getUserId();
-    if(!id || error) {
-        throw new Error("Error");
+    const { id, error } = await getUserId();
+    if (!id || error) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const { chatId } = await context.params;
 
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '50');
     const skip = (page - 1) * limit;
 
-    // Verify user is member of chat
     const chatMember = await prisma.chatMember.findFirst({
-      where: {
-        chatId: params.chatId,
-        userId: id
-      }
+      where: { chatId, userId: id }
     });
 
     if (!chatMember) {
@@ -32,9 +29,7 @@ export async function GET(
     }
 
     const messages = await prisma.message.findMany({
-      where: {
-        chatId: params.chatId
-      },
+      where: { chatId },
       include: {
         sender: {
           select: {
@@ -45,9 +40,7 @@ export async function GET(
           }
         }
       },
-      orderBy: {
-        createdAt: 'desc'
-      },
+      orderBy: { createdAt: 'desc' },
       skip,
       take: limit
     });
@@ -61,10 +54,9 @@ export async function GET(
 
 
 
-
 export async function POST(
   req: NextRequest,
-  { params }: { params: { chatId: string } }
+  context: { params: Promise<{ chatId: string }> }
 ) {
   try {
     
@@ -72,9 +64,15 @@ export async function POST(
     if(!id || error) {
         throw new Error("Error");
     }
-
+    
+    const { chatId } = await context.params;
     const body = await req.json();
     const { content } = body;
+
+    if (!content || typeof content !== 'string') {
+      return NextResponse.json({ error: 'Invalid content' }, { status: 400 });
+    }
+
 
     if (!content?.trim()) {
       return NextResponse.json({ error: 'Message content required' }, { status: 400 });
@@ -83,7 +81,7 @@ export async function POST(
     // Verify user is member of chat
     const chatMember = await prisma.chatMember.findFirst({
       where: {
-        chatId: params.chatId,
+        chatId: chatId,
         userId: id
       }
     });
@@ -95,7 +93,7 @@ export async function POST(
     const message = await prisma.message.create({
       data: {
         content: content.trim(),
-        chatId: params.chatId,
+        chatId: chatId,
         senderId: id
       },
       include: {

@@ -10,7 +10,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // Handle sidebar visibility on resize
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth < 768) {
+      if (window.innerWidth < 700) {
         setSidebarOpen(false);
       } else {
         setSidebarOpen(true);
@@ -35,7 +35,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {/* Top Navigation */}
           <TopNav sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
           {/* Main scrollable content */}
-          <main className="flex-1 overflow-y-auto p-5 bg-gray-50 dark:bg-gray-900">
+          <main className="flex-1 h-fit overflow-y-auto bg-gray-50 dark:bg-gray-900">
             {children}
           </main>
         </div>
