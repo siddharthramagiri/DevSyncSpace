@@ -1,4 +1,4 @@
-// app/api/chats/search/route.ts
+// app/api/chat/search/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import getUserId from '../../user/getUserId';

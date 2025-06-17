@@ -28,7 +28,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { sampleProjects, teamMembers } from "@/data/projectData";
 import { ProjectFile } from "@/types/project";
 import { Project } from "@/lib/types";
-import { getCodeContent } from "@/utils/codeContentUtils";
+import { getCodeContent } from "@/lib/utils/codeContentutils";
 
 const Projects = () => {
   const { toast } = useToast();

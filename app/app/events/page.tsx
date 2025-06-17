@@ -392,7 +392,7 @@ const Events = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 m-5">
       <div className="flex flex-col justify-between space-y-4 sm:flex-row sm:items-center sm:space-y-0">
         <div>
           <h1 className="text-3xl font-bold">Events</h1>
@@ -703,17 +703,18 @@ const Events = () => {
           <Card className="md:col-span-4 lg:col-span-3">
             <CardHeader>
               <CardTitle>Date</CardTitle>
-              <CardDescription>
-                Select a date to view events
-              </CardDescription>
+              <CardDescription>Select a date to view events</CardDescription>
             </CardHeader>
             <CardContent>
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={setSelectedDate}
-                className="mx-auto"
-              />
+              <div className="w-full mx-auto">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={setSelectedDate}
+                  className="mx-auto"
+                />
+              </div>
+
               <div className="mt-4 text-center">
                 <Button
                   variant="outline"
@@ -722,6 +723,7 @@ const Events = () => {
                 >
                   Today
                 </Button>
+
                 {selectedDate && (
                   <div className="mt-6 text-center">
                     <h3 className="text-lg font-semibold">
@@ -735,6 +737,7 @@ const Events = () => {
               </div>
             </CardContent>
           </Card>
+
         )}
 
         {/* Main Content */}

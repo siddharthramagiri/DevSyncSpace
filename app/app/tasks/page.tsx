@@ -304,7 +304,7 @@ const Tasks = () => {
     ];
 
     return (
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4 m-5">
         <h1>Hello</h1>
         {columns.map((column) => {
           const columnTasks = filteredTasks.filter(
@@ -717,7 +717,7 @@ const Tasks = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 m-5">
       <div className="flex flex-col justify-between space-y-4 sm:flex-row sm:items-center sm:space-y-0">
         <div>
           <h1 className="text-3xl font-bold">Tasks</h1>

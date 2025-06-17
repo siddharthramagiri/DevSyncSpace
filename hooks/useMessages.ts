@@ -1,5 +1,8 @@
+// hooks/useMessages.ts
+'use client'
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Message, User } from '@/lib/types';
+import { useSocket } from './useSocket';
 
 export interface MessageWithSender extends Message {
   sender: Pick<User, 'id' | 'name' | 'email' | 'image' | 'createdAt'>;
@@ -12,6 +15,7 @@ export function useMessages(chatId: string | null) {
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(1);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const socket = useSocket();
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -31,14 +35,30 @@ export function useMessages(chatId: string | null) {
       } else {
         setMessages(prev => [...data, ...prev]);
       }
-      
+      console.log(reset ? data : [...data, ...messages]);
       setHasMore(data.length === 50);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);
     }
-  }, [chatId]);
+  }, [chatId, messagesEndRef]);
+
+  // Real-time: join room and listen for new messages
+  useEffect(() => {
+    if (!socket || !chatId) return;
+    socket.emit("join", chatId);
+
+    const handler = (message: MessageWithSender) => {
+      setMessages(prev => [...prev, message]);
+    };
+    socket.on("new-message", handler);
+
+    return () => {
+      socket.emit("leave", chatId);  // Leave room on unmount/change
+      socket.off("new-message", handler);
+    };
+  }, [socket, chatId]);
 
   const sendMessage = useCallback(async (content: string) => {
     if (!chatId || !content.trim()) return;
@@ -52,13 +72,16 @@ export function useMessages(chatId: string | null) {
       if (!response.ok) throw new Error('Failed to send message');
       const newMessage = await response.json();
       setMessages(prev => [...prev, newMessage]);
-      setTimeout(scrollToBottom, 100);
+      // Emit to socket
+      if (socket) {
+        socket.emit("send-message", { chatId, message: newMessage });
+      }
       return newMessage;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to send message');
       throw err;
     }
-  }, [chatId, scrollToBottom]);
+  }, [chatId, socket]);
 
   const loadMoreMessages = useCallback(() => {
     if (hasMore && !loading) {
