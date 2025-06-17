@@ -1,29 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { getServerSession } from 'next-auth';
 import getUserId from '@/app/api/user/getUserId';
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { teamId: string } }
+  context: { params: { teamId: string } }
 ) {
+  const { teamId } = context.params;
+
   try {
-    const {id, error} = await getUserId();
-    if(!id || error) {
-        return NextResponse.json({ error: 'Session or Server Error' }, { status: 500 });
+    const { id, error } = await getUserId();
+    if (!id || error) {
+      return NextResponse.json({ error: 'Session or Server Error' }, { status: 500 });
     }
 
-    // Verify user is member of team
+    // Verify user is member of team or team leader
     const teamMember = await prisma.teamMember.findFirst({
       where: {
-        teamId: params.teamId,
+        teamId,
         userId: id
       }
     });
 
     const team = await prisma.team.findFirst({
       where: {
-        id: params.teamId,
+        id: teamId,
         leaderId: id
       }
     });
@@ -34,7 +35,7 @@ export async function GET(
 
     const members = await prisma.teamMember.findMany({
       where: {
-        teamId: params.teamId
+        teamId
       },
       include: {
         user: {

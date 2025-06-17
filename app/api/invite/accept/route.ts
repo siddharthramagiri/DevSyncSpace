@@ -1,7 +1,6 @@
 // pages/api/invite/accept.ts
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { Project } from '@/lib/types';
 
 export async function POST(req: NextRequest) {
   const { projectId, userId } = await req.json();
