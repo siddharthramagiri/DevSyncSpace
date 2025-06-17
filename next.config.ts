@@ -1,17 +1,20 @@
-import type { NextConfig } from "next";
-
-// /** @type {import('next').NextConfig} */
+/** @type {import('next').NextConfig} */
 const nextConfig = {
+  experimental: {
+    serverComponentsExternalPackages: ['@prisma/client'],
+  },
+  webpack: (config : any, { isServer } : any) => {
+    if (isServer) {
+      config.plugins = [...config.plugins]
+    }
+    return config
+  },
   eslint: {
-    // Warning: This allows production builds to successfully complete even if
-    // your project has ESLint errors.
     ignoreDuringBuilds: true,
   },
   typescript: {
-    // Warning: This allows production builds to successfully complete even if
-    // your project has TypeScript errors.
     ignoreBuildErrors: true,
   },
 }
 
-export default nextConfig;
+module.exports = nextConfig
