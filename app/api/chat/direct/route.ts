@@ -1,9 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
 import getUserId from '../../user/getUserId';
+
+let prisma : any;
+
+try {
+  const { PrismaClient } = require('@prisma/client');
+  prisma = new PrismaClient();
+} catch (error) {
+  console.warn('Prisma client not available during build');
+}
+
 
 export async function POST(req: NextRequest) {
   try {
+
+    if (!prisma) {
+      const { PrismaClient } = await import('@prisma/client');
+      prisma = new PrismaClient();
+    }
+
     const {id, error} = await getUserId();
     if(!id || error) {
         throw new Error("Error");

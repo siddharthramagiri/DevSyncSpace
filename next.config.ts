@@ -9,6 +9,10 @@ const nextConfig = {
     return config;
   },
 
+  experimental: {
+    serverComponentsExternalPackages: ['@prisma/client']
+  },
+
   eslint: {
     ignoreDuringBuilds: true,
   },
