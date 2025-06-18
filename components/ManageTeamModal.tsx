@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { User, Team } from "@/lib/types";
 import { updateTeamDetails, removeTeamMember } from "@/app/api/teams/teamActions";
 import { useToast } from "@/hooks/use-toast";
-import { MyTeam } from "@/app/app/teams/page";
+import { MyTeam } from "@/app/api/teams/getMyTeams";
 
 interface ManageTeamModalProps {
   open: boolean;

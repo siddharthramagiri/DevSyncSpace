@@ -1,0 +1,164 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String?
+  email     String   @unique
+  image     String?
+  createdAt DateTime @default(now())
+
+  teams               TeamMember[]
+  tasks               Task[]
+  meetings            Meeting[]        @relation("UserMeetings")
+  createdMeetings     Meeting[]        @relation("CreatedMeetings")
+  createdEvents       Event[]          @relation("CreatedEvents")
+  ledTeams            Team[]           @relation("LedTeams")
+  sentInvitations     TeamInvitation[] @relation("Inviter")
+  receivedInvitations TeamInvitation[] @relation("Invitee")
+  sentMessages        Message[]
+  chatMemberships     ChatMember[]
+}
+
+model Team {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  leaderId  String
+
+  leader         User             @relation("LedTeams", fields: [leaderId], references: [id], onDelete: Cascade)
+  members        TeamMember[]
+  projects       Project[]
+  TeamInvitation TeamInvitation[]
+  chats          Chat[]
+}
+
+model TeamMember {
+  id     String @id @default(cuid())
+  userId String
+  teamId String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, teamId])
+}
+
+model Project {
+  id          String  @id @default(cuid())
+  title       String
+  description String?
+  githubUrl   String?
+  teamId      String
+
+  team  Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  tasks Task[]
+}
+
+model Task {
+  id           String     @id @default(cuid())
+  title        String
+  description  String?
+  status       TaskStatus @default(PENDING)
+  dueDate      DateTime?
+  projectId    String
+  assignedToId String?
+
+  project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignedTo User?   @relation(fields: [assignedToId], references: [id], onDelete: SetNull)
+}
+
+model Meeting {
+  id        String   @id @default(cuid())
+  topic     String
+  roomId    String   @unique
+  scheduled DateTime
+  createdBy String
+
+  creator   User   @relation("CreatedMeetings", fields: [createdBy], references: [id], onDelete: Cascade)
+  attendees User[] @relation("UserMeetings")
+}
+
+model Event {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  scheduledAt DateTime
+  createdById String
+
+  creator User @relation("CreatedEvents", fields: [createdById], references: [id], onDelete: Cascade)
+}
+
+model TeamInvitation {
+  id        String       @id @default(cuid())
+  teamId    String
+  invitedBy String
+  invitedTo String
+  status    InviteStatus @default(PENDING)
+  createdAt DateTime     @default(now())
+
+  team    Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  inviter User @relation("Inviter", fields: [invitedBy], references: [id], onDelete: Cascade)
+  invitee User @relation("Invitee", fields: [invitedTo], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, invitedTo])
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+model Chat {
+  id        String   @id @default(cuid())
+  name      String?
+  isGroup   Boolean  @default(true)
+  teamId    String?
+  createdAt DateTime @default(now())
+
+  team     Team?        @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  messages Message[]
+  members  ChatMember[]
+}
+
+model ChatMember {
+  id     String @id @default(cuid())
+  chatId String
+  userId String
+
+  chat Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([chatId, userId])
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  content   String
+  createdAt DateTime @default(now())
+  chatId    String
+  senderId  String
+
+  chat   Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  sender User @relation(fields: [senderId], references: [id], onDelete: Cascade)
+}

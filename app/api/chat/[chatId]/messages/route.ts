@@ -14,7 +14,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { chatId } = context.params;
+    const { chatId } = await context.params;
 
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get('page') || '1');
@@ -64,7 +64,7 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { chatId } = context.params;
+    const { chatId } = await context.params;
     const body = await req.json();
     const { content } = body;
 

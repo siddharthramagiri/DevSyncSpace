@@ -12,7 +12,7 @@ export default async function ChatPage() {
   }
 
   return (
-    <div className="h-11/12 overflow-hidden">
+    <div className="h-full overflow-hidden">
       <ChatContainer />
     </div>
   );
